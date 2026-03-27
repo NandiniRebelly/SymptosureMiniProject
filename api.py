@@ -39,6 +39,10 @@ from feature_engineer import build_feature_vector
 from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
 from disease_matcher import DiseaseMatcher
 
+from severity import load_severity, calculate_severity
+from predictor import load_disease_map, predict_disease
+from emergency import is_emergency
+
 # Configuration flags
 USE_SCORER_ONLY = False  # Set to True to use only rule-based scoring, False for ensemble
 
@@ -77,7 +81,9 @@ symptom_severity = None
 disease_precautions = None
 symptom_descriptions = None
 disease_matcher = None
-
+#NEW FIELD
+severity_dict = load_severity()
+disease_map = load_disease_map()
 
 def load_artifacts():
     """
@@ -327,46 +333,249 @@ async def health_check():
     }
 
 
+# @app.post("/predict", response_model=PredictResponse)
+# async def predict(request: PredictRequest):
+#     """
+#     Main prediction endpoint that processes text or audio input and returns disease predictions.
+    
+#     Args:
+#         request: Prediction request with input, type, language, and mode
+        
+#     Returns:
+#         Prediction response with diseases, probabilities, and additional information
+#     """
+#     try:
+#         # Validate input
+#         if request.input_type not in ['text', 'audio']:
+#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
+        
+#         if request.language not in ['en', 'hi', 'pa']:
+#             raise HTTPException(status_code=400, detail="language must be 'en', 'hi', or 'pa'")
+        
+#         if request.mode not in ['text', 'voice']:
+#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
+        
+#         # Step 1: Process input based on type
+#         if request.input_type == 'audio':
+#             # Process audio input
+#             input_text = process_audio_input(request.input, request.language)
+#             input_text_user_lang = input_text  # Keep original transcript
+#         else:
+#             # Use text input directly
+#             input_text = request.input
+#             input_text_user_lang = request.input
+        
+#         if not input_text.strip():
+#             raise HTTPException(status_code=400, detail="No text found in input")
+        
+#         # Debug logging: Original user text and language
+#         print(f"🔍 Original user text: '{input_text_user_lang}'")
+#         print(f"🌐 Selected language: '{request.language}'")
+        
+#         # Step 2: Force translation to English if needed
+#         if request.language != 'en':
+#             try:
+#                 print(f"🔄 Translating from {request.language} to English...")
+#                 input_text = translate_to_english(input_text_user_lang, request.language)
+#                 print(f"✅ Translated English text: '{input_text}'")
+#             except Exception as e:
+#                 print(f"❌ Translation error: {e}")
+#                 print(f"⚠️ Continuing with original text: '{input_text}'")
+#                 # Continue with original text if translation fails
+#         else:
+#             print(f"✅ Text already in English: '{input_text}'")
+        
+#         symptoms = extract_symptoms(input_text)
+#         print(f"🎯 Extracted symptoms: {symptoms}")
+
+#         if not symptoms:
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=[],
+#                 predictions=[],
+#                 language=request.language,
+#                 display_text="No symptoms detected.",
+#                 tts_audio_base64=None
+#             )
+        
+        
+#                 # Step 4: Predict disease candidates
+#         pred_results = predict_disease(symptoms, disease_map)
+
+#         if not pred_results:
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms,
+#                 predictions=[],
+#                 predictions_translated=None,
+#                 language=request.language,
+#                 display_text="No matching disease found. Please add more symptoms.",
+#                 tts_audio_base64=None
+#             )
+
+#         # Prefer diseases that explain all extracted symptoms
+#         full_matches = [p for p in pred_results if p["match_count"] == len(symptoms)]
+
+#         if len(full_matches) == 1:
+#             selected = full_matches[:1]
+
+#         elif len(full_matches) > 1:
+#             full_matches.sort(key=lambda x: x["score"], reverse=True)
+
+#             if len(full_matches) >= 2 and (full_matches[0]["score"] - full_matches[1]["score"]) < 0.08:
+#                 return PredictResponse(
+#                     input_text=input_text,
+#                     input_text_user_lang=input_text_user_lang,
+#                     symptoms=symptoms,
+#                     predictions=[],
+#                     predictions_translated=None,
+#                     language=request.language,
+#                     display_text="Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
+#                     tts_audio_base64=None
+#                 )
+
+#             selected = full_matches[:3]
+
+#         else:
+#             if pred_results[0]["score"] < 0.35:
+#                 return PredictResponse(
+#                     input_text=input_text,
+#                     input_text_user_lang=input_text_user_lang,
+#                     symptoms=symptoms,
+#                     predictions=[],
+#                     predictions_translated=None,
+#                     language=request.language,
+#                     display_text="Symptoms are too general. Please add more symptoms for accurate prediction.",
+#                     tts_audio_base64=None
+#                 )
+
+#             if len(pred_results) > 1 and abs(pred_results[0]["score"] - pred_results[1]["score"]) < 0.08:
+#                 return PredictResponse(
+#                     input_text=input_text,
+#                     input_text_user_lang=input_text_user_lang,
+#                     symptoms=symptoms,
+#                     predictions=[],
+#                     predictions_translated=None,
+#                     language=request.language,
+#                     display_text="Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
+#                     tts_audio_base64=None
+#                 )
+
+#             selected = pred_results[:3]
+
+#         emergency_flag = is_emergency(symptoms)
+
+#         disease_predictions = []
+#         for item in selected:
+#             disease = item["disease"]
+#             prob = item["score"]
+#             matched = item["matched"]
+#             precautions = disease_precautions.get(disease, [])
+#             severity = calculate_severity(matched, severity_dict)
+
+#             disease_predictions.append(DiseasePrediction(
+#                 disease=disease,
+#                 prob=float(prob),
+#                 severity=severity,
+#                 precautions=precautions,
+#                 symptom_descriptions={}
+#             ))
+
+#         top_disease = disease_predictions[0].disease
+#         top_severity = disease_predictions[0].severity
+
+#         summary = f"You may have {top_disease}. Severity: {top_severity}."
+
+#         if top_severity == "Low":
+#             summary += " Home care and rest may help."
+#         elif top_severity == "Medium":
+#             summary += " Monitor symptoms and consult a doctor if they worsen."
+#         else:
+#             summary += " Consult a doctor."
+
+#         if emergency_flag:
+#             summary += " 🚨 Seek immediate medical attention!"
+
+#         # # Step 7: Generate display text
+#         # display_text = generate_display_text(disease_predictions, request.language)
+#         display_text = summary
+        
+#         # Step 7: Generate TTS audio if voice mode
+#         tts_audio_base64 = None
+#         if request.mode == 'voice':
+#             try:
+#                 # Try cloud TTS first, fallback to local
+#                 try:
+#                     cloud_lang_code = f"{request.language}-IN" if request.language in ['hi', 'pa'] else f"{request.language}-US"
+#                     _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
+#                 except Exception:
+#                     # Fallback to local TTS
+#                     _, audio_bytes, temp_path = text_to_speech_local(display_text, request.language)
+#                     # Clean up temp file
+#                     import os
+#                     if os.path.exists(temp_path):
+#                         os.unlink(temp_path)
+                
+#                 # Encode audio as base64
+#                 tts_audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+                
+#             except Exception as e:
+#                 print(f"TTS warning: {e}")
+#                 # Continue without audio if TTS fails
+#         predictions_translated = None
+#         debug_info = None
+        
+#         # Return response
+#         return PredictResponse(
+#             input_text=input_text,
+#             input_text_user_lang=input_text_user_lang,
+#             symptoms=symptoms,
+#             predictions=disease_predictions,
+#             predictions_translated=predictions_translated,
+#             language=request.language,
+#             display_text=display_text,
+#             tts_audio_base64=tts_audio_base64,
+#             debug=debug_info if debug_info else None
+#         )
+        
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Prediction error: {e}")
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 @app.post("/predict", response_model=PredictResponse)
 async def predict(request: PredictRequest):
     """
     Main prediction endpoint that processes text or audio input and returns disease predictions.
-    
-    Args:
-        request: Prediction request with input, type, language, and mode
-        
-    Returns:
-        Prediction response with diseases, probabilities, and additional information
     """
     try:
         # Validate input
         if request.input_type not in ['text', 'audio']:
             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
-        
+
         if request.language not in ['en', 'hi', 'pa']:
             raise HTTPException(status_code=400, detail="language must be 'en', 'hi', or 'pa'")
-        
+
         if request.mode not in ['text', 'voice']:
             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
-        
-        # Step 1: Process input based on type
+
+        # Step 1: Read input
         if request.input_type == 'audio':
-            # Process audio input
             input_text = process_audio_input(request.input, request.language)
-            input_text_user_lang = input_text  # Keep original transcript
+            input_text_user_lang = input_text
         else:
-            # Use text input directly
             input_text = request.input
             input_text_user_lang = request.input
-        
+
         if not input_text.strip():
             raise HTTPException(status_code=400, detail="No text found in input")
-        
-        # Debug logging: Original user text and language
+
         print(f"🔍 Original user text: '{input_text_user_lang}'")
         print(f"🌐 Selected language: '{request.language}'")
-        
-        # Step 2: Force translation to English if needed
+
+        # Step 2: Translate if needed
         if request.language != 'en':
             try:
                 print(f"🔄 Translating from {request.language} to English...")
@@ -375,76 +584,48 @@ async def predict(request: PredictRequest):
             except Exception as e:
                 print(f"❌ Translation error: {e}")
                 print(f"⚠️ Continuing with original text: '{input_text}'")
-                # Continue with original text if translation fails
         else:
             print(f"✅ Text already in English: '{input_text}'")
-        
+
         # Step 3: Extract symptoms
         symptoms = extract_symptoms(input_text)
         print(f"🎯 Extracted symptoms: {symptoms}")
-        
+
         if not symptoms:
-            # Return empty prediction if no symptoms found
             return PredictResponse(
                 input_text=input_text,
                 input_text_user_lang=input_text_user_lang,
                 symptoms=[],
                 predictions=[],
+                predictions_translated=None,
                 language=request.language,
-                display_text=generate_display_text([], request.language),
+                display_text="No symptoms detected.",
                 tts_audio_base64=None
             )
-        
-        # Step 4: Build feature vector and predict
-        feature_vector = build_feature_vector(symptoms, str(Path("artifacts")))
-        feature_vector = feature_vector.reshape(1, -1)
-        
-        # Get ML model probabilities (if available and not scorer-only mode)
-        model_probs = None
-        if not USE_SCORER_ONLY and model_data and 'model' in model_data:
-            try:
-                model_probs = model_data['model'].predict_proba(feature_vector)[0]
-                print(f"🤖 ML model predictions: {len(model_probs)} diseases")
-            except Exception as e:
-                print(f"⚠️ ML model prediction failed: {e}")
-                model_probs = None
-        
-        # Run rule-based disease scoring
-        diseases = meta_data['diseases']
-        scorer_results = []
-        scorer_probs = []
-        
-        if disease_matcher:
-            try:
-                scorer_results = disease_matcher.score_diseases(symptoms, top_k=len(diseases))
-                print(f"📊 Rule-based scoring: {len(scorer_results)} diseases scored")
-                
-                # Create scorer probabilities ordered same as meta_data['diseases']
-                disease_to_prob = {result['disease']: result['prob'] for result in scorer_results}
-                scorer_probs = [disease_to_prob.get(disease, 0.0) for disease in diseases]
-                
-                # Log top 3 scorer predictions
-                top_scorer = scorer_results[:3]
-                scorer_log = ", ".join([f"{r['disease']}:{r['prob']:.3f}" for r in top_scorer])
-                print(f"🎯 Top 3 scorer predictions: {scorer_log}")
-                
-            except Exception as e:
-                print(f"⚠️ Rule-based scoring failed: {e}")
-                scorer_results = []
-                scorer_probs = []
-        
-        # Combine ML and rule-based predictions
-        if model_probs is not None and scorer_probs and not USE_SCORER_ONLY:
-            try:
-                final_probs = disease_matcher.ensemble_with_model(model_probs, scorer_probs, model_weight=0.35)
-                print(f"🔄 Ensemble predictions: ML weight 0.35, Scorer weight 0.65")
-            except Exception as e:
-                print(f"⚠️ Ensemble failed, using scorer only: {e}")
-                final_probs = scorer_probs
-        else:
-            final_probs = scorer_probs if scorer_probs else model_probs
-            if final_probs is None:
-                print("❌ No predictions available")
+
+        # Step 4: Predict disease candidates
+        pred_results = predict_disease(symptoms, disease_map)
+
+        if not pred_results:
+            return PredictResponse(
+                input_text=input_text,
+                input_text_user_lang=input_text_user_lang,
+                symptoms=symptoms,
+                predictions=[],
+                predictions_translated=None,
+                language=request.language,
+                display_text="No matching disease found. Please add more symptoms.",
+                tts_audio_base64=None
+            )
+
+        #DELETE THIS 
+        # If only 1 or 2 symptoms and many diseases are close, ask for more details
+        if len(symptoms) <= 2:
+            top_same_match_count = [
+                p for p in pred_results
+                if p["match_count"] == pred_results[0]["match_count"]
+            ]
+            if len(top_same_match_count) > 1:
                 return PredictResponse(
                     input_text=input_text,
                     input_text_user_lang=input_text_user_lang,
@@ -452,142 +633,95 @@ async def predict(request: PredictRequest):
                     predictions=[],
                     predictions_translated=None,
                     language=request.language,
-                    display_text=generate_display_text([], request.language),
+                    display_text="Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
                     tts_audio_base64=None
                 )
+        #NEW FIELD
+        # ✅ NEW FIX: if user gives 3+ symptoms → NEVER block
         
-        # Step 5: Create disease predictions
-        threshold = meta_data.get('threshold', 0.3)
+        if len(symptoms) >= 3:
+            selected = pred_results[:3]
+        else:
+            selected = pred_results[:1]
+
+                
+
+        
+
+        #IMP
+        # # For 3+ symptoms, return top 3 instead of blocking too early
+        # selected = pred_results[:3]
+
+        # Step 5: Emergency check
+        emergency_flag = is_emergency(symptoms)
+
+
+        #DELETE THIS
+        # Step 6: Build response predictions
         disease_predictions = []
-        
-        for i, (disease, prob) in enumerate(zip(diseases, final_probs)):
-            if prob >= threshold or i < 3:  # Always include top 3, others above threshold
-                # Get precautions for this disease
-                precautions = disease_precautions.get(disease, [])
+        for item in selected:
+            disease = item["disease"]
+            prob = item["score"]
+            matched = item["matched"]
+            precautions = disease_precautions.get(disease, [])
+
+            severity = calculate_severity(matched, severity_dict)
+
+            disease_predictions.append(DiseasePrediction(
+                disease=disease,
+                prob=float(prob),
+                severity=severity,
+                precautions=precautions,
+                symptom_descriptions={}
+            ))
                 
-                # Get symptom descriptions for this disease's symptoms
-                symptom_descriptions_dict = {}
-                for symptom in symptoms:
-                    if symptom in symptom_descriptions:
-                        symptom_descriptions_dict[symptom] = symptom_descriptions[symptom]
-                
-                # Calculate severity
-                severity = calculate_disease_severity(symptoms, disease)
-                
-                disease_predictions.append(DiseasePrediction(
-                    disease=disease,
-                    prob=float(prob),
-                    severity=severity,
-                    precautions=precautions,
-                    symptom_descriptions=symptom_descriptions_dict
-                ))
-        
-        # Sort by probability (descending)
-        disease_predictions.sort(key=lambda x: x.prob, reverse=True)
-        
-        # Take top 3 for UI ranking
-        disease_predictions = disease_predictions[:3]
-        
-        # Log top 3 final predictions
-        top_final = disease_predictions[:3]
-        final_log = ", ".join([f"{p.disease}:{p.prob:.3f}" for p in top_final])
-        print(f"🏆 Top 3 final predictions: {final_log}")
-        
-        # Create debug information
-        debug_info = {}
-        if model_probs is not None:
-            top_model_indices = np.argsort(model_probs)[-3:][::-1]
-            debug_info["model_probs_top3"] = [
-                {"disease": diseases[i], "prob": float(model_probs[i])} 
-                for i in top_model_indices
-            ]
-        if scorer_results:
-            debug_info["scorer_top3"] = [
-                {"disease": r["disease"], "prob": r["prob"], "matched": r["matched"]} 
-                for r in scorer_results[:3]
-            ]
-        
-        # Step 6: Translate predictions if needed
-        predictions_translated = None
-        if request.language != 'en':
-            try:
-                print(f"🔄 Translating predictions to {request.language}...")
-                predictions_translated = []
-                for prediction in disease_predictions:
-                    # Convert Pydantic model to dict for translation
-                    prediction_dict = prediction.dict()
-                    
-                    # Translate disease name
-                    try:
-                        prediction_dict["disease"] = translate_from_english(
-                            prediction_dict["disease"], request.language
-                        )
-                        print(f"✅ Translated disease: '{prediction.disease}' → '{prediction_dict['disease']}'")
-                    except Exception as e:
-                        print(f"⚠️ Disease translation failed: {e}")
-                        prediction_dict["disease"] = prediction.disease
-                    
-                    # Translate precautions
-                    try:
-                        translated_precautions = []
-                        for precaution in prediction_dict["precautions"]:
-                            translated_precautions.append(
-                                translate_from_english(precaution, request.language)
-                            )
-                        prediction_dict["precautions"] = translated_precautions
-                        print(f"✅ Translated precautions: {len(translated_precautions)} items")
-                    except Exception as e:
-                        print(f"⚠️ Precautions translation failed: {e}")
-                        prediction_dict["precautions"] = prediction.precautions
-                    
-                    # Convert back to DiseasePrediction model
-                    translated_prediction = DiseasePrediction(**prediction_dict)
-                    predictions_translated.append(translated_prediction)
-                
-                print(f"✅ Successfully translated {len(predictions_translated)} predictions")
-            except Exception as e:
-                print(f"❌ Prediction translation failed: {e}")
-                predictions_translated = None
-        
-        # Step 7: Generate display text
-        display_text = generate_display_text(disease_predictions, request.language)
-        
-        # Step 7: Generate TTS audio if voice mode
+        # Step 7: Summary
+        top_prediction = disease_predictions[0]
+        summary = f"You may have {top_prediction.disease}. Severity: {top_prediction.severity}."
+
+        if top_prediction.severity == "Low":
+            summary += " Home care and rest may help."
+        elif top_prediction.severity == "Medium":
+            summary += " Monitor symptoms and consult a doctor if they worsen."
+        else:
+            summary += " Consult a doctor."
+
+        if emergency_flag:
+            summary += " 🚨 Seek immediate medical attention!"
+
+        display_text = summary
+        print(f"🧠 FINAL OUTPUT: {display_text}")
+
+        # Step 8: TTS if voice mode
         tts_audio_base64 = None
         if request.mode == 'voice':
             try:
-                # Try cloud TTS first, fallback to local
                 try:
                     cloud_lang_code = f"{request.language}-IN" if request.language in ['hi', 'pa'] else f"{request.language}-US"
                     _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
                 except Exception:
-                    # Fallback to local TTS
                     _, audio_bytes, temp_path = text_to_speech_local(display_text, request.language)
-                    # Clean up temp file
                     import os
                     if os.path.exists(temp_path):
                         os.unlink(temp_path)
-                
-                # Encode audio as base64
+
                 tts_audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-                
+
             except Exception as e:
                 print(f"TTS warning: {e}")
-                # Continue without audio if TTS fails
-        
-        # Return response
+
         return PredictResponse(
             input_text=input_text,
             input_text_user_lang=input_text_user_lang,
             symptoms=symptoms,
             predictions=disease_predictions,
-            predictions_translated=predictions_translated,
+            predictions_translated=None,
             language=request.language,
             display_text=display_text,
             tts_audio_base64=tts_audio_base64,
-            debug=debug_info if debug_info else None
+            debug=None
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
