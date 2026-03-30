@@ -188,14 +188,15 @@
     "num_diseases": 41,
     "total_symptom_disease_pairs": 321
   },
-  "best_params": {
-    "estimator__n_estimators": 100,
-    "estimator__max_depth": null
-  },
+  "best_params": "RandomForestClassifier(n_estimators=200, class_weight='balanced')",
   "training_metrics": {
-    "hamming_loss": 0.024390243902439025,
-    "macro_f1": 0.0,
-    "micro_f1": 0.0
+    "exact_holdout_accuracy": 1.0,
+    "exact_holdout_macro_f1": 1.0,
+    "exact_holdout_weighted_f1": 1.0,
+    "exact_holdout_top3_accuracy": 1.0
   },
-  "best_cv_score": 0.0
+  "best_cv_score": 0.0,
+  "model_type": "RandomForestClassifier",
+  "num_classes": 41,
+  "evaluation_note": "Exact-pattern holdout can remain optimistic on this dataset. Use evaluate_model.py masked-holdout and grouped-CV metrics as the main reported performance."
 }

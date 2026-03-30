@@ -1,57 +1,2029 @@
-"""
-FastAPI application for symptoms checker project.
+# import base64
+# import json
+# import joblib
+# import os
+# import tempfile
+# from pathlib import Path
+# from typing import List, Dict, Any, Optional
+# from contextlib import asynccontextmanager
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel, Field
+# from translator import translate_to_english, translate_from_english
+# from symptom_extractor import extract_symptoms
+# from feature_engineer import build_feature_vector
+# from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
+# from severity import load_severity, calculate_severity
+# from predictor import load_disease_map, predict_disease
+# from emergency import is_emergency
 
-Sample curl request:
-curl -X POST "http://localhost:8000/predict" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "input": "I have a fever and headache",
-       "input_type": "text",
-       "language": "en",
-       "mode": "text"
-     }'
+# class PredictRequest(BaseModel):
+#     input: str = Field(...)
+#     input_type: str = Field(...)
+#     language: str = Field(...)
+#     mode: str = Field(...)
 
-For audio input:
-curl -X POST "http://localhost:8000/predict" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "input": "base64_encoded_audio_data",
-       "input_type": "audio",
-       "language": "hi",
-       "mode": "voice"
-     }'
-"""
+# class DiseasePrediction(BaseModel):
+#     disease: str
+#     prob: float
+#     severity: str
+#     precautions: List[str]
+#     symptom_descriptions: Dict[str, str]
+
+# class PredictResponse(BaseModel):
+#     input_text: str
+#     input_text_user_lang: str
+#     symptoms: List[str]
+#     predictions: List[DiseasePrediction]
+#     predictions_translated: Optional[List[DiseasePrediction]] = None
+#     language: str
+#     display_text: str
+#     tts_audio_base64: Optional[str] = None
+#     debug: Optional[Dict[str, Any]] = None
+
+# severity_dict = load_severity()
+# disease_map = load_disease_map()
+# model_data = None
+# meta_data = None
+# disease_precautions = {}
+# symptom_descriptions = {}
+
+# def load_artifacts():
+#     global model_data, meta_data, disease_precautions, symptom_descriptions
+#     artifacts_dir = Path("artifacts")
+#     model_path = artifacts_dir / "model.joblib"
+#     meta_path = artifacts_dir / "meta.json"
+#     precautions_path = artifacts_dir / "disease_precaution_map.json"
+#     descriptions_path = artifacts_dir / "symptom_description.json"
+#     if model_path.exists():
+#         model_data = joblib.load(model_path)
+#         print(f"✓ Loaded model from {model_path}")
+#     else:
+#         print("⚠️ model.joblib not found, using predictor.py fallback")
+#     if meta_path.exists():
+#         with open(meta_path, "r", encoding="utf-8") as f:
+#             meta_data = json.load(f)
+#     if precautions_path.exists():
+#         with open(precautions_path, "r", encoding="utf-8") as f:
+#             disease_precautions = json.load(f)
+#     if descriptions_path.exists():
+#         with open(descriptions_path, "r", encoding="utf-8") as f:
+#             symptom_descriptions = json.load(f)
+
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     load_artifacts()
+#     yield
+
+# app = FastAPI(title="Symptoms Checker API", version="2.3.0", lifespan=lifespan)
+# app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# def process_audio_input(audio_base64: str, language_code: str) -> str:
+#     try:
+#         audio_bytes = base64.b64decode(audio_base64)
+#         try:
+#             cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(language_code, "en-US")
+#             return speech_to_text_cloud(audio_bytes, cloud_lang_code).strip()
+#         except Exception:
+#             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+#                 temp_file.write(audio_bytes)
+#                 temp_path = temp_file.name
+#             try:
+#                 return speech_to_text_local(temp_path).strip()
+#             finally:
+#                 if os.path.exists(temp_path):
+#                     os.unlink(temp_path)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
+
+# def ml_predict(symptoms: List[str]) -> List[Dict[str, Any]]:
+#     if not model_data or "model" not in model_data:
+#         return []
+#     model = model_data["model"]
+#     class_names = model_data.get("class_names") or model_data.get("diseases") or []
+#     feature_vector = build_feature_vector(symptoms, "artifacts").reshape(1, -1)
+#     if hasattr(model, "predict_proba"):
+#         probs = model.predict_proba(feature_vector)[0]
+#         results = []
+#         for disease, prob in zip(class_names, probs):
+#             matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#             if prob > 0:
+#                 results.append({"disease": disease, "score": float(prob), "matched": matched, "match_count": len(matched), "missing_count": len(set(symptoms) - disease_map.get(disease, set()))})
+#         results.sort(key=lambda x: x["score"], reverse=True)
+#         return results
+#     pred = model.predict(feature_vector)[0]
+#     disease = class_names[int(pred)]
+#     matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#     return [{"disease": disease, "score": 1.0, "matched": matched, "match_count": len(matched), "missing_count": len(set(symptoms) - disease_map.get(disease, set()))}]
+
+# def choose_predictions(symptoms: List[str], pred_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+#     if not pred_results:
+#         return []
+#     if len(symptoms) <= 2 and len(pred_results) > 1:
+#         top_gap = pred_results[0]["score"] - pred_results[1]["score"]
+#         if top_gap < 0.12:
+#             return []
+#     if len(symptoms) >= 3:
+#         return pred_results[:3]
+#     return pred_results[:1]
+
+# def generate_display_text(predictions: List[DiseasePrediction], language: str) -> str:
+#     if not predictions:
+#         text = "Multiple or unclear diseases match your symptoms. Please add more symptoms."
+#     else:
+#         top = predictions[0]
+#         msg = "Home care and rest may help." if top.severity == "Low" else ("Monitor symptoms and consult a doctor if they worsen." if top.severity == "Medium" else "Consult a doctor.")
+#         text = f"You may have {top.disease}. Severity: {top.severity}. {msg}"
+#     if language != "en":
+#         try:
+#             return translate_from_english(text, language)
+#         except Exception:
+#             return text
+#     return text
+
+# @app.get("/health")
+# async def health_check():
+#     return {"status": "healthy", "model_loaded": model_data is not None}
+
+# @app.post("/predict", response_model=PredictResponse)
+# async def predict(request: PredictRequest):
+#     try:
+#         if request.input_type not in ["text", "audio"]:
+#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
+#         if request.mode not in ["text", "voice"]:
+#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
+#         input_text_user_lang = process_audio_input(request.input, request.language) if request.input_type == "audio" else request.input
+#         if not input_text_user_lang.strip():
+#             raise HTTPException(status_code=400, detail="No text found in input")
+#         input_text = input_text_user_lang if request.language == "en" else translate_to_english(input_text_user_lang, request.language)
+#         symptoms = extract_symptoms(input_text)
+#         if not symptoms:
+#             display_text = generate_display_text([], request.language)
+#             return PredictResponse(input_text=input_text, input_text_user_lang=input_text_user_lang, symptoms=[], predictions=[], language=request.language, display_text=display_text)
+#         pred_results = ml_predict(symptoms)
+#         if not pred_results:
+#             pred_results = predict_disease(symptoms, disease_map)
+#         selected = choose_predictions(symptoms, pred_results)
+#         if not selected:
+#             display_text = generate_display_text([], request.language)
+#             return PredictResponse(input_text=input_text, input_text_user_lang=input_text_user_lang, symptoms=symptoms, predictions=[], language=request.language, display_text=display_text, debug={"used_ml_model": bool(model_data and "model" in model_data)})
+#         emergency_flag = is_emergency(symptoms)
+#         disease_predictions = []
+#         for item in selected:
+#             disease = item["disease"]
+#             matched = item.get("matched", [])
+#             precautions = disease_precautions.get(disease, [])
+#             severity = calculate_severity(matched, severity_dict)
+#             if emergency_flag and severity != "High":
+#                 severity = "High"
+#             disease_predictions.append(DiseasePrediction(disease=disease, prob=float(item["score"]), severity=severity, precautions=precautions, symptom_descriptions={s: symptom_descriptions.get(s, "") for s in matched}))
+#         display_text = generate_display_text(disease_predictions, request.language)
+#         tts_audio_base64 = None
+#         if request.mode == "voice":
+#             try:
+#                 lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(request.language, "en-US")
+#                 try:
+#                     _, audio_bytes = text_to_speech_cloud(display_text, lang_code)
+#                 except Exception:
+#                     _, audio_bytes, temp_path = text_to_speech_local(display_text, request.language)
+#                     if os.path.exists(temp_path):
+#                         os.unlink(temp_path)
+#                 tts_audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+#             except Exception:
+#                 pass
+#         return PredictResponse(input_text=input_text, input_text_user_lang=input_text_user_lang, symptoms=symptoms, predictions=disease_predictions, predictions_translated=None, language=request.language, display_text=display_text, tts_audio_base64=tts_audio_base64, debug={"used_ml_model": bool(model_data and "model" in model_data)})
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# def find_available_port(start_port=8000, max_port=8010):
+#     import socket
+#     for port in range(start_port, max_port + 1):
+#         try:
+#             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#                 s.bind(("0.0.0.0", port))
+#                 return port
+#         except OSError:
+#             continue
+#     raise RuntimeError(f"No available port found between {start_port} and {max_port}")
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = find_available_port()
+#     print(f"⚡ API running on http://localhost:{port}")
+#     print(f"📚 API Documentation: http://localhost:{port}/docs")
+#     print(f"❤️ Health Check: http://localhost:{port}/health")
+#     print("=" * 50)
+#     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+
+# #COMMENT THIS
+# import base64
+# import json
+# import os
+# import tempfile
+# from pathlib import Path
+# from typing import List, Dict, Any, Optional, Tuple
+# from contextlib import asynccontextmanager
+# from concurrent.futures import ThreadPoolExecutor
+
+# import joblib
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel, Field
+
+# from translator import translate_to_english, translate_from_english, detect_language
+# from symptom_extractor import extract_symptoms
+# from feature_engineer import build_feature_vector
+# from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
+# from severity import load_severity, calculate_severity
+# from predictor import load_disease_map, predict_disease
+# from emergency import is_emergency
+
+# class PredictRequest(BaseModel):
+#     input: str = Field(...)
+#     input_type: str = Field(...)
+#     language: str = Field(...)
+#     mode: str = Field(...)
+
+# class DiseasePrediction(BaseModel):
+#     disease: str
+#     prob: float
+#     severity: str
+#     precautions: List[str]
+#     symptom_descriptions: Dict[str, str]
+
+# class PredictResponse(BaseModel):
+#     input_text: str
+#     input_text_user_lang: str
+#     symptoms: List[str]
+#     predictions: List[DiseasePrediction]
+#     predictions_translated: Optional[List[DiseasePrediction]] = None
+#     symptoms_translated: Optional[List[str]] = None
+#     language: str
+#     display_text: str
+#     tts_audio_base64: Optional[str] = None
+#     debug: Optional[Dict[str, Any]] = None
+
+# severity_dict = load_severity()
+# disease_map = load_disease_map()
+# model_data = None
+# meta_data = None
+# disease_precautions = {}
+# symptom_descriptions = {}
+# TRANSLATION_CACHE: Dict[Tuple[str, str], str] = {}
+# MAX_TRANSLATION_WORKERS = 8
+
+# SYMPTOM_LABELS = {
+#     "headache": {"en": "headache", "hi": "सिरदर्द", "te": "తలనొప్పి", "pa": "ਸਿਰ ਦਰਦ", "kn": "ತಲೆನೋವು", "ta": "தலைவலி"},
+#     "high_fever": {"en": "high fever", "hi": "तेज बुखार", "te": "అధిక జ్వరం", "pa": "ਤੇਜ਼ ਬੁਖਾਰ", "kn": "ತೀವ್ರ ಜ್ವರ", "ta": "அதிக காய்ச்சல்"},
+#     "mild_fever": {"en": "mild fever", "hi": "हल्का बुखार", "te": "తేలికపాటి జ్వరం", "pa": "ਹਲਕਾ ਬੁਖਾਰ", "kn": "ಸ್ವಲ್ಪ ಜ್ವರ", "ta": "லேசான காய்ச்சல்"},
+#     "vomiting": {"en": "vomiting", "hi": "उल्टी", "te": "వాంతులు", "pa": "ਉਲਟੀ", "kn": "ವಾಂತಿ", "ta": "வாந்தி"},
+#     "nausea": {"en": "nausea", "hi": "मतली", "te": "వికారం", "pa": "ਮਤਲੀ", "kn": "ಛರ್ದಿ ಭಾವನೆ", "ta": "குமட்டல்"},
+#     "cough": {"en": "cough", "hi": "खांसी", "te": "దగ్గు", "pa": "ਖੰਘ", "kn": "ಕೆಮ್ಮು", "ta": "இருமல்"},
+#     "dizziness": {"en": "dizziness", "hi": "चक्कर", "te": "తల తిరగడం", "pa": "ਚੱਕਰ", "kn": "ತಲೆ ಸುತ್ತು", "ta": "தலைசுற்றல்"},
+#     "skin_rash": {"en": "skin rash", "hi": "त्वचा पर चकत्ते", "te": "చర్మంపై దద్దుర్లు", "pa": "ਚਮੜੀ 'ਤੇ ਦਾਣੇ", "kn": "ಚರ್ಮದ ಉರಿ/ಪುಳ್ಳೆಗಳು", "ta": "சருமச் சிரங்கு"},
+#     "itching": {"en": "itching", "hi": "खुजली", "te": "దురద", "pa": "ਖੁਜਲੀ", "kn": "ಖಜ್ಜಳಿ", "ta": "அரிப்பு"},
+#     "fatigue": {"en": "fatigue", "hi": "थकान", "te": "అలసట", "pa": "ਥਕਾਵਟ", "kn": "ದಣಿವು", "ta": "சோர்வு"},
+#     "back_pain": {"en": "back pain", "hi": "पीठ दर्द", "te": "నడుం నొప్పి", "pa": "ਪੀਠ ਦਰਦ", "kn": "ಬೆನ್ನುನೋವು", "ta": "முதுகு வலி"},
+#     "neck_pain": {"en": "neck pain", "hi": "गर्दन दर्द", "te": "మెడ నొప్పి", "pa": "ਗਰਦਨ ਦਰਦ", "kn": "ಕುತ್ತಿಗೆ ನೋವು", "ta": "கழுத்து வலி"},
+#     "chest_pain": {"en": "chest pain", "hi": "सीने में दर्द", "te": "ఛాతి నొప్పి", "pa": "ਸੀਨੇ ਵਿੱਚ ਦਰਦ", "kn": "ಛಾತಿ ನೋವು", "ta": "மார்பு வலி"},
+#     "breathlessness": {"en": "breathlessness", "hi": "सांस लेने में तकलीफ", "te": "శ్వాస తీసుకోవడంలో ఇబ్బంది", "pa": "ਸਾਹ ਲੈਣ ਵਿੱਚ ਦਿੱਕਤ", "kn": "ಉಸಿರಾಟದ ತೊಂದರೆ", "ta": "மூச்சுத்திணறல்"},
+#     "runny_nose": {"en": "runny nose", "hi": "नाक बहना", "te": "ముక్కు కారడం", "pa": "ਨੱਕ ਵਗਣਾ", "kn": "ಮೂಗು ಹರಿಯುವುದು", "ta": "மூக்கு வடிதல்"},
+#     "congestion": {"en": "congestion", "hi": "नाक बंद होना", "te": "ముక్కు దిగబడటం", "pa": "ਨੱਕ ਬੰਦ ਹੋਣਾ", "kn": "ಮೂಗು ಮುಚ್ಚಿಕೊಳ್ಳುವುದು", "ta": "மூக்கு அடைப்பு"},
+#     "throat_irritation": {"en": "throat irritation", "hi": "गले में जलन", "te": "గొంతు ఇర్రిటేషన్", "pa": "ਗਲੇ ਵਿੱਚ ਜਲਣ", "kn": "ಗಂಟಲು ಕೆರಡು", "ta": "தொண்டை எரிச்சல்"},
+#     "sweating": {"en": "sweating", "hi": "पसीना आना", "te": "చెమటలు", "pa": "ਪਸੀਨਾ", "kn": "ಬೆವರು", "ta": "வியர்வை"},
+#     "weight_loss": {"en": "weight loss", "hi": "वजन कम होना", "te": "బరువు తగ్గడం", "pa": "ਵਜ਼ਨ ਘਟਣਾ", "kn": "ತೂಕ ಇಳಿಯುವುದು", "ta": "எடை குறைவு"},
+#     "loss_of_appetite": {"en": "loss of appetite", "hi": "भूख कम लगना", "te": "ఆకలి తగ్గడం", "pa": "ਭੁੱਖ ਘੱਟ ਲੱਗਣਾ", "kn": "ಭುಕ್ಕಿ ಕಡಿಮೆ", "ta": "பசியின்மை"},
+#     "abdominal_pain": {"en": "abdominal pain", "hi": "पेट दर्द", "te": "ఉదర నొప్పి", "pa": "ਪੇਟ ਦਰਦ", "kn": "ಹೊಟ್ಟೆ ನೋವು", "ta": "வயிற்று வலி"},
+#     "joint_pain": {"en": "joint pain", "hi": "जोड़ों में दर्द", "te": "సంధుల నొప్పి", "pa": "ਜੋੜਾਂ ਵਿੱਚ ਦਰਦ", "kn": "ಸಂಧಿ ನೋವು", "ta": "மூட்டு வலி"},
+#     "muscle_pain": {"en": "muscle pain", "hi": "मांसपेशियों में दर्द", "te": "కండరాల నొప్పి", "pa": "ਮਾਸਪੇਸ਼ੀ ਦਰਦ", "kn": "ಸ್ನಾಯು ನೋವು", "ta": "தசை வலி"},
+#     "chills": {"en": "chills", "hi": "ठंड लगना", "te": "చలి వేయడం", "pa": "ਠੰਢ ਲੱਗਣਾ", "kn": "ಚಳಿ ಹಿಡಿಯುವುದು", "ta": "சளிச்சல்"},
+#     "insomnia": {"en": "insomnia", "hi": "अनिद्रा", "te": "నిద్రలేమి", "pa": "ਅਨੀਂਦਰਾ", "kn": "ನಿದ್ರಾಹೀನತೆ", "ta": "தூக்கமின்மை"},
+#     "weakness_of_one_body_side": {"en": "weakness of one body side", "hi": "शरीर के एक तरफ कमजोरी", "te": "శరీరం ఒక వైపు బలహీనత", "pa": "ਸ਼ਰੀਰ ਦੇ ਇੱਕ ਪਾਸੇ ਕਮਜ਼ੋਰੀ", "kn": "ದೇಹದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ", "ta": "உடலின் ஒரு பக்க பலவீனம்"},
+# }
+
+# SEVERITY_LABELS = {
+#     "en": {"Low": "Low", "Medium": "Medium", "High": "High"},
+#     "hi": {"Low": "कम", "Medium": "मध्यम", "High": "उच्च"},
+#     "te": {"Low": "తక్కువ", "Medium": "మధ్యస్థ", "High": "అధికం"},
+#     "pa": {"Low": "ਘੱਟ", "Medium": "ਦਰਮਿਆਨਾ", "High": "ਉੱਚ"},
+#     "kn": {"Low": "ಕಡಿಮೆ", "Medium": "ಮಧ್ಯಮ", "High": "ಹೆಚ್ಚು"},
+#     "ta": {"Low": "குறைவு", "Medium": "மிதமான", "High": "அதிகம்"},
+# }
+
+# STATIC_TEXT = {
+#     "en": {"no_symptoms": "No symptoms detected.", "multiple": "Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.", "you_may_have": "You may have", "severity": "Severity", "low_msg": "Home care and rest may help.", "medium_msg": "Monitor symptoms and consult a doctor if they worsen.", "high_msg": "Consult a doctor.", "emergency": "Seek immediate medical attention!"},
+#     "hi": {"no_symptoms": "कोई लक्षण नहीं मिले।", "multiple": "आपके लक्षण कई बीमारियों से मेल खाते हैं। कृपया अधिक सटीक परिणाम के लिए और लक्षण जोड़ें।", "you_may_have": "आपको", "severity": "गंभीरता", "low_msg": "घर पर आराम और देखभाल मदद कर सकती है।", "medium_msg": "लक्षणों पर नज़र रखें और बढ़ने पर डॉक्टर से सलाह लें।", "high_msg": "एक डॉक्टर से परामर्श।", "emergency": "तुरंत चिकित्सकीय सहायता लें!"},
+#     "te": {"no_symptoms": "ఎలాంటి లక్షణాలు గుర్తించబడలేదు.", "multiple": "మీ లక్షణాలు అనేక వ్యాధులతో సరిపోతున్నాయి. ఖచ్చితమైన అంచనా కోసం మరిన్ని లక్షణాలు ఇవ్వండి.", "you_may_have": "మీకు", "severity": "తీవ్రత", "low_msg": "ఇంటివద్ద విశ్రాంతి మరియు జాగ్రత్తలు సహాయపడవచ్చు.", "medium_msg": "లక్షణాలను గమనించండి. ఎక్కువైతే వైద్యుడిని సంప్రదించండి.", "high_msg": "వైద్యుడిని సంప్రదించండి.", "emergency": "వెంటనే వైద్య సహాయం పొందండి!"},
+#     "pa": {"no_symptoms": "ਕੋਈ ਲੱਛਣ ਨਹੀਂ ਮਿਲੇ।", "multiple": "ਤੁਹਾਡੇ ਲੱਛਣ ਕਈ ਬਿਮਾਰੀਆਂ ਨਾਲ ਮਿਲਦੇ ਹਨ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।", "you_may_have": "ਤੁਹਾਨੂੰ", "severity": "ਤੀਬਰਤਾ", "low_msg": "ਘਰ ਵਿੱਚ ਆਰਾਮ ਅਤੇ ਦੇਖਭਾਲ ਮਦਦ ਕਰ ਸਕਦੀ ਹੈ।", "medium_msg": "ਲੱਛਣਾਂ 'ਤੇ ਨਜ਼ਰ ਰੱਖੋ ਅਤੇ ਵੱਧਣ ਤੇ ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।", "high_msg": "ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।", "emergency": "ਤੁਰੰਤ ਡਾਕਟਰੀ ਮਦਦ ਲਵੋ!"},
+#     "kn": {"no_symptoms": "ಯಾವ ಲಕ್ಷಣಗಳೂ ಕಂಡುಬಂದಿಲ್ಲ.", "multiple": "ನಿಮ್ಮ ಲಕ್ಷಣಗಳು ಹಲವಾರು ರೋಗಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುತ್ತಿವೆ. ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ನೀಡಿ.", "you_may_have": "ನಿಮಗೆ", "severity": "ತೀವ್ರತೆ", "low_msg": "ಮನೆ ವಿಶ್ರಾಂತಿ ಮತ್ತು ಜಾಗ್ರತೆ ಸಹಾಯವಾಗಬಹುದು.", "medium_msg": "ಲಕ್ಷಣಗಳನ್ನು ಗಮನಿಸಿ. ಹೆಚ್ಚಾದರೆ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.", "high_msg": "ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.", "emergency": "ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ!"},
+#     "ta": {"no_symptoms": "எந்த அறிகுறிகளும் கண்டறியப்படவில்லை.", "multiple": "உங்கள் அறிகுறிகள் பல நோய்களுடன் பொருந்துகின்றன. மேலும் அறிகுறிகள் அளிக்கவும்.", "you_may_have": "உங்களுக்கு", "severity": "தீவிரம்", "low_msg": "வீட்டு ஓய்வு மற்றும் கவனம் உதவலாம்.", "medium_msg": "அறிகுறிகளை கவனியுங்கள். அதிகரித்தால் மருத்துவரை அணுகவும்.", "high_msg": "மருத்துவரை அணுகவும்.", "emergency": "உடனடி மருத்துவ உதவி பெறுங்கள்!"},
+# }
+
+# def t(lang: str, key: str) -> str:
+#     return STATIC_TEXT.get(lang, STATIC_TEXT["en"]).get(key, STATIC_TEXT["en"][key])
+
+# def cached_translate(text: str, lang: str) -> str:
+#     if not text or lang == "en":
+#         return text
+#     key = (text, lang)
+#     if key in TRANSLATION_CACHE:
+#         return TRANSLATION_CACHE[key]
+#     try:
+#         translated = translate_from_english(text, lang)
+#         TRANSLATION_CACHE[key] = translated if translated else text
+#     except Exception:
+#         TRANSLATION_CACHE[key] = text
+#     return TRANSLATION_CACHE[key]
+
+# def translate_many(texts: List[str], lang: str) -> List[str]:
+#     if lang == "en":
+#         return texts
+#     unique = []
+#     seen = set()
+#     for x in texts:
+#         if x not in seen:
+#             seen.add(x)
+#             unique.append(x)
+#     with ThreadPoolExecutor(max_workers=min(MAX_TRANSLATION_WORKERS, max(1, len(unique)))) as ex:
+#         translated_unique = list(ex.map(lambda x: cached_translate(x, lang), unique))
+#     mapping = dict(zip(unique, translated_unique))
+#     return [mapping.get(x, x) for x in texts]
+
+# def localize_symptom(symptom_key: str, lang: str) -> str:
+#     if lang == "en":
+#         return symptom_key
+#     if symptom_key in SYMPTOM_LABELS and lang in SYMPTOM_LABELS[symptom_key]:
+#         return SYMPTOM_LABELS[symptom_key][lang]
+#     return cached_translate(symptom_key.replace("_", " "), lang)
+
+# def localize_symptoms(symptoms: List[str], lang: str) -> List[str]:
+#     return [localize_symptom(s, lang) for s in symptoms]
+
+# def localize_severity(severity_en: str, lang: str) -> str:
+#     return SEVERITY_LABELS.get(lang, SEVERITY_LABELS["en"]).get(severity_en, severity_en)
+
+# def localize_disease_name(disease: str, lang: str) -> str:
+#     return disease if lang == "en" else cached_translate(disease, lang)
+
+# def localize_precautions(precautions: List[str], lang: str) -> List[str]:
+#     return translate_many(precautions, lang)
+
+# def build_summary(disease_name_en: str, severity_en: str, lang: str, emergency_flag: bool) -> str:
+#     sev = localize_severity(severity_en, lang)
+#     disease_local = localize_disease_name(disease_name_en, lang)
+#     msg = t(lang, "low_msg") if severity_en == "Low" else (t(lang, "medium_msg") if severity_en == "Medium" else t(lang, "high_msg"))
+#     summary = f"{t(lang, 'you_may_have')} {disease_local}. {t(lang, 'severity')}: {sev}. {msg}"
+#     if emergency_flag:
+#         summary += f" 🚨 {t(lang, 'emergency')}"
+#     return summary
+
+# def load_artifacts():
+#     global model_data, meta_data, disease_precautions, symptom_descriptions
+#     artifacts_dir = Path("artifacts")
+#     model_path = artifacts_dir / "model.joblib"
+#     meta_path = artifacts_dir / "meta.json"
+#     precautions_path = artifacts_dir / "disease_precaution_map.json"
+#     descriptions_path = artifacts_dir / "symptom_description.json"
+#     if model_path.exists():
+#         model_data = joblib.load(model_path)
+#         print(f"✓ Loaded model from {model_path}")
+#     else:
+#         print("⚠️ model.joblib not found, using predictor.py fallback")
+#     if meta_path.exists():
+#         with open(meta_path, "r", encoding="utf-8") as f:
+#             meta_data = json.load(f)
+#     if precautions_path.exists():
+#         with open(precautions_path, "r", encoding="utf-8") as f:
+#             disease_precautions = json.load(f)
+#     if descriptions_path.exists():
+#         with open(descriptions_path, "r", encoding="utf-8") as f:
+#             symptom_descriptions = json.load(f)
+
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     load_artifacts()
+#     yield
+
+# app = FastAPI(title="Symptoms Checker API", description="AI-powered symptom analysis and disease prediction", version="3.1.0", lifespan=lifespan)
+# app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# def process_audio_input(audio_base64: str, language_code: str) -> str:
+#     try:
+#         audio_bytes = base64.b64decode(audio_base64)
+#         try:
+#             cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(language_code, "en-US")
+#             return speech_to_text_cloud(audio_bytes, cloud_lang_code).strip()
+#         except Exception:
+#             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+#                 temp_file.write(audio_bytes)
+#                 temp_path = temp_file.name
+#             try:
+#                 return speech_to_text_local(temp_path).strip()
+#             finally:
+#                 if os.path.exists(temp_path):
+#                     os.unlink(temp_path)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
+
+# def ml_predict(symptoms: List[str]) -> List[Dict[str, Any]]:
+#     if not model_data or "model" not in model_data:
+#         return []
+#     model = model_data["model"]
+#     class_names = model_data.get("class_names") or model_data.get("diseases") or []
+#     feature_vector = build_feature_vector(symptoms, "artifacts").reshape(1, -1)
+#     if hasattr(model, "predict_proba"):
+#         probs = model.predict_proba(feature_vector)[0]
+#         results = []
+#         for disease, prob in zip(class_names, probs):
+#             matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#             if prob > 0:
+#                 results.append({"disease": disease, "score": float(prob), "matched": matched, "match_count": len(matched), "missing_count": len(set(symptoms) - disease_map.get(disease, set()))})
+#         results.sort(key=lambda x: x["score"], reverse=True)
+#         return results
+#     pred = model.predict(feature_vector)[0]
+#     disease = class_names[int(pred)]
+#     matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#     return [{"disease": disease, "score": 1.0, "matched": matched, "match_count": len(matched), "missing_count": len(set(symptoms) - disease_map.get(disease, set()))}]
+
+# def choose_predictions(symptoms: List[str], pred_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+#     if not pred_results:
+#         return []
+#     if len(symptoms) <= 2 and len(pred_results) > 1:
+#         top_gap = pred_results[0]["score"] - pred_results[1]["score"]
+#         if top_gap < 0.12:
+#             return []
+#     return pred_results[:3] if len(symptoms) >= 3 else pred_results[:1]
+
+# def generate_tts_audio(display_text: str, lang: str) -> Optional[str]:
+#     try:
+#         cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(lang, "en-US")
+#         try:
+#             _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
+#         except Exception:
+#             _, audio_bytes, temp_path = text_to_speech_local(display_text, lang)
+#             if os.path.exists(temp_path):
+#                 os.unlink(temp_path)
+#         return base64.b64encode(audio_bytes).decode("utf-8")
+#     except Exception:
+#         return None
+
+# @app.get("/health")
+# async def health_check():
+#     return {"status": "healthy", "model_loaded": model_data is not None}
+
+# @app.post("/predict", response_model=PredictResponse)
+# async def predict(request: PredictRequest):
+#     try:
+#         if request.input_type not in ["text", "audio"]:
+#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
+#         if request.mode not in ["text", "voice"]:
+#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
+#         input_text_user_lang = process_audio_input(request.input, request.language) if request.input_type == "audio" else request.input
+#         if not input_text_user_lang.strip():
+#             raise HTTPException(status_code=400, detail="No text found in input")
+#         detected_lang = detect_language(input_text_user_lang)
+#         source_lang = request.language if request.language != "en" else detected_lang
+#         input_text = input_text_user_lang if source_lang == "en" else translate_to_english(input_text_user_lang, source_lang)
+#         symptoms = extract_symptoms(input_text)
+#         if not symptoms:
+#             display_text = t(request.language, "no_symptoms")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(input_text=input_text, input_text_user_lang=input_text_user_lang, symptoms=[], predictions=[], predictions_translated=None, symptoms_translated=[], language=request.language, display_text=display_text, tts_audio_base64=tts_audio, debug={"detected_lang": detected_lang})
+#         pred_results = ml_predict(symptoms)
+#         if not pred_results:
+#             pred_results = predict_disease(symptoms, disease_map)
+#         selected = choose_predictions(symptoms, pred_results)
+#         if not selected:
+#             display_text = t(request.language, "multiple")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(input_text=input_text, input_text_user_lang=input_text_user_lang, symptoms=symptoms, predictions=[], predictions_translated=[], symptoms_translated=localize_symptoms(symptoms, request.language), language=request.language, display_text=display_text, tts_audio_base64=tts_audio, debug={"detected_lang": detected_lang, "used_ml_model": bool(model_data and "model" in model_data)})
+#         emergency_flag = is_emergency(symptoms)
+#         disease_predictions = []
+#         for item in selected:
+#             disease = item["disease"]
+#             matched = item.get("matched", [])
+#             precautions = disease_precautions.get(disease, [])
+#             severity_en = calculate_severity(matched, severity_dict)
+#             if emergency_flag and severity_en != "High":
+#                 severity_en = "High"
+#             disease_predictions.append(DiseasePrediction(disease=disease, prob=float(item["score"]), severity=severity_en, precautions=precautions, symptom_descriptions={s: symptom_descriptions.get(s, "") for s in matched}))
+#         predictions_translated = None
+#         symptoms_translated = None
+#         if request.language != "en":
+#             predictions_translated = []
+#             for p in disease_predictions:
+#                 translated_symptom_desc = {localize_symptom(k, request.language): (cached_translate(v, request.language) if v else "") for k, v in p.symptom_descriptions.items()}
+#                 predictions_translated.append(DiseasePrediction(disease=localize_disease_name(p.disease, request.language), prob=p.prob, severity=localize_severity(p.severity, request.language), precautions=localize_precautions(p.precautions, request.language), symptom_descriptions=translated_symptom_desc))
+#             symptoms_translated = localize_symptoms(symptoms, request.language)
+#         top_prediction = disease_predictions[0]
+#         display_text = build_summary(top_prediction.disease, top_prediction.severity, request.language, emergency_flag)
+#         tts_audio_base64 = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#         return PredictResponse(input_text=input_text, input_text_user_lang=input_text_user_lang, symptoms=symptoms, predictions=disease_predictions, predictions_translated=predictions_translated, symptoms_translated=symptoms_translated, language=request.language, display_text=display_text, tts_audio_base64=tts_audio_base64, debug={"detected_lang": detected_lang, "used_ml_model": bool(model_data and "model" in model_data), "top_candidates": selected})
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Prediction error: {e}")
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# def find_available_port(start_port=8000, max_port=8010):
+#     import socket
+#     for port in range(start_port, max_port + 1):
+#         try:
+#             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#                 s.bind(("0.0.0.0", port))
+#                 return port
+#         except OSError:
+#             continue
+#     raise RuntimeError(f"No available port found between {start_port} and {max_port}")
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = find_available_port()
+#     print(f"⚡ API running on http://localhost:{port}")
+#     print(f"📚 API Documentation: http://localhost:{port}/docs")
+#     print(f"❤️ Health Check: http://localhost:{port}/health")
+#     print("=" * 50)
+#     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+# """
+# FastAPI application for SymptoSure.
+# ML-model-backed + fast multilingual response translation.
+# """
+
+# import base64
+# import json
+# import os
+# import tempfile
+# from pathlib import Path
+# from typing import List, Dict, Any, Optional, Tuple
+# from contextlib import asynccontextmanager
+# from concurrent.futures import ThreadPoolExecutor
+
+# import joblib
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel, Field
+
+# from translator import translate_to_english, translate_from_english, detect_language
+# from symptom_extractor import extract_symptoms
+# from feature_engineer import build_feature_vector
+# from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
+# from severity import load_severity, calculate_severity
+# from predictor import load_disease_map, predict_disease
+# from emergency import is_emergency
+
+
+# class PredictRequest(BaseModel):
+#     input: str = Field(...)
+#     input_type: str = Field(...)
+#     language: str = Field(...)
+#     mode: str = Field(...)
+
+
+# class DiseasePrediction(BaseModel):
+#     disease: str
+#     prob: float
+#     severity: str
+#     precautions: List[str]
+#     symptom_descriptions: Dict[str, str]
+
+
+# class PredictResponse(BaseModel):
+#     input_text: str
+#     input_text_user_lang: str
+#     symptoms: List[str]
+#     predictions: List[DiseasePrediction]
+#     predictions_translated: Optional[List[DiseasePrediction]] = None
+#     symptoms_translated: Optional[List[str]] = None
+#     language: str
+#     display_text: str
+#     tts_audio_base64: Optional[str] = None
+#     debug: Optional[Dict[str, Any]] = None
+
+
+# severity_dict = load_severity()
+# disease_map = load_disease_map()
+
+# model_data = None
+# meta_data = None
+# disease_precautions = {}
+# symptom_descriptions = {}
+
+# TRANSLATION_CACHE: Dict[Tuple[str, str], str] = {}
+# MAX_TRANSLATION_WORKERS = 8
+
+
+# SYMPTOM_LABELS = {
+#     "headache": {"en": "headache", "hi": "सिरदर्द", "te": "తలనొప్పి", "pa": "ਸਿਰ ਦਰਦ", "kn": "ತಲೆನೋವು", "ta": "தலைவலி"},
+#     "high_fever": {"en": "high fever", "hi": "तेज बुखार", "te": "అధిక జ్వరం", "pa": "ਤੇਜ਼ ਬੁਖਾਰ", "kn": "ತಿೀವ್ರ ಜ್ವರ", "ta": "அதிக காய்ச்சல்"},
+#     "mild_fever": {"en": "mild fever", "hi": "हल्का बुखार", "te": "తేలికపాటి జ్వరం", "pa": "ਹਲਕਾ ਬੁਖਾਰ", "kn": "ಸ್ವಲ್ಪ ಜ್ವರ", "ta": "லேசான காய்ச்சல்"},
+#     "vomiting": {"en": "vomiting", "hi": "उल्टी", "te": "వాంతులు", "pa": "ਉਲਟੀ", "kn": "ವಾಂತಿ", "ta": "வாந்தி"},
+#     "nausea": {"en": "nausea", "hi": "मतली", "te": "వికారం", "pa": "ਮਤਲੀ", "kn": "ಛರ್ಡಿ ಭಾವನೆ", "ta": "குமட்டல்"},
+#     "cough": {"en": "cough", "hi": "खांसी", "te": "దగ్గు", "pa": "ਖੰਘ", "kn": "ಕೆಮ್ಮು", "ta": "இருமல்"},
+#     "dizziness": {"en": "dizziness", "hi": "चक्कर", "te": "తల తిరగడం", "pa": "ਚੱਕਰ", "kn": "ತಲೆ ಸುತ್ತು", "ta": "தலைசுற்றல்"},
+#     "skin_rash": {"en": "skin rash", "hi": "त्वचा पर चकत्ते", "te": "చర్మ దద్దుర్లు", "pa": "ਚਮੜੀ ਦੇ ਦਾਣੇ", "kn": "ಚರ್ಮದ ಉರಿ", "ta": "சருமச் சிரங்கு"},
+#     "itching": {"en": "itching", "hi": "खुजली", "te": "దురద", "pa": "ਖੁਜਲੀ", "kn": "ಖಜ್ಜಳಿ", "ta": "அரிப்பு"},
+#     "fatigue": {"en": "fatigue", "hi": "थकान", "te": "అలసట", "pa": "ਥਕਾਵਟ", "kn": "ದಣಿವು", "ta": "சோர்வு"},
+#     "back_pain": {"en": "back pain", "hi": "पीठ दर्द", "te": "నడుం నొప్పి", "pa": "ਪੀਠ ਦਰਦ", "kn": "ಬೆನ್ನು ನೋವು", "ta": "முதுகு வலி"},
+#     "neck_pain": {"en": "neck pain", "hi": "गर्दन दर्द", "te": "మెడ నొప్పి", "pa": "ਗਰਦਨ ਦਰਦ", "kn": "ಕತ್ತು ನೋವು", "ta": "கழுத்து வலி"},
+#     "chest_pain": {"en": "chest pain", "hi": "सीने में दर्द", "te": "ఛాతి నొప్పి", "pa": "ਸੀਨੇ ਵਿੱਚ ਦਰਦ", "kn": "ಛಾತಿ ನೋವು", "ta": "மார்பு வலி"},
+#     "breathlessness": {"en": "breathlessness", "hi": "सांस लेने में तकलीफ", "te": "శ్వాస ఇబ్బంది", "pa": "ਸਾਹ ਲੈਣ ਵਿੱਚ ਦਿੱਕਤ", "kn": "ಉಸಿರಾಟದ ತೊಂದರೆ", "ta": "மூச்சுத்திணறல்"},
+#     "runny_nose": {"en": "runny nose", "hi": "नाक बहना", "te": "ముక్కు కారడం", "pa": "ਨੱਕ ਵਗਣਾ", "kn": "ಮೂಗು ಹರಿಯುವುದು", "ta": "மூக்கு வடிதல்"},
+#     "congestion": {"en": "congestion", "hi": "नाक बंद", "te": "ముక్కు దిగబడటం", "pa": "ਨੱਕ ਬੰਦ", "kn": "ಮೂಗು ಮುಚ್ಚಿಕೊಳ್ಳುವುದು", "ta": "மூக்கு அடைப்பு"},
+#     "throat_irritation": {"en": "throat irritation", "hi": "गले में जलन", "te": "గొంతు రాపిడి", "pa": "ਗਲੇ ਵਿੱਚ ਜਲਣ", "kn": "ಗಂಟಲು ಕೆರಡು", "ta": "தொண்டை எரிச்சல்"},
+#     "sweating": {"en": "sweating", "hi": "पसीना", "te": "చెమటలు", "pa": "ਪਸੀਨਾ", "kn": "ಬೆವರು", "ta": "வியர்வை"},
+#     "weight_loss": {"en": "weight loss", "hi": "वजन कम होना", "te": "బరువు తగ్గడం", "pa": "ਵਜ਼ਨ ਘਟਣਾ", "kn": "ತೂಕ ಇಳಿಯುವುದು", "ta": "எடை குறைவு"},
+#     "loss_of_appetite": {"en": "loss of appetite", "hi": "भूख कम लगना", "te": "ఆకలి తగ్గడం", "pa": "ਭੁੱਖ ਘੱਟ ਲੱਗਣਾ", "kn": "ಭುಕ್ಕಿ ಕಡಿಮೆ", "ta": "பசியின்மை"},
+#     "abdominal_pain": {"en": "abdominal pain", "hi": "पेट दर्द", "te": "కడుపు నొప్పి", "pa": "ਪੇਟ ਦਰਦ", "kn": "ಹೊಟ್ಟೆ ನೋವು", "ta": "வயிற்று வலி"},
+#     "joint_pain": {"en": "joint pain", "hi": "जोड़ों में दर्द", "te": "సంధుల నొప్పి", "pa": "ਜੋੜ ਦਰਦ", "kn": "ಸಂಧಿ ನೋವು", "ta": "மூட்டு வலி"},
+#     "muscle_pain": {"en": "muscle pain", "hi": "मांसपेशियों में दर्द", "te": "కండరాల నొప్పి", "pa": "ਮਾਸਪੇਸ਼ੀ ਦਰਦ", "kn": "ಸ್ನಾಯು ನೋವು", "ta": "தசை வலி"},
+#     "chills": {"en": "chills", "hi": "कंपकंपी", "te": "చలి", "pa": "ਠੰਢ ਲੱਗਣਾ", "kn": "ಚಳಿ ಹಿಡಿಯುವುದು", "ta": "சளிச்சல்"},
+#     "insomnia": {"en": "insomnia", "hi": "अनिद्रा", "te": "నిద్రలేమి", "pa": "ਅਨੀਂਦਰਾ", "kn": "ನಿದ್ರಾಹೀನತೆ", "ta": "தூக்கமின்மை"},
+#     "weakness_of_one_body_side": {"en": "weakness of one body side", "hi": "शरीर के एक तरफ कमजोरी", "te": "ఒకవైపు బలహీనత", "pa": "ਸ਼ਰੀਰ ਦੇ ਇੱਕ ਪਾਸੇ ਕਮਜ਼ੋਰੀ", "kn": "ದೇಹದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ", "ta": "உடலின் ஒரு பக்க பலவீனம்"},
+# }
+
+# SEVERITY_LABELS = {
+#     "en": {"Low": "Low", "Medium": "Medium", "High": "High"},
+#     "hi": {"Low": "कम", "Medium": "मध्यम", "High": "उच्च"},
+#     "te": {"Low": "తక్కువ", "Medium": "మధ్యస్థ", "High": "అధికం"},
+#     "pa": {"Low": "ਘੱਟ", "Medium": "ਦਰਮਿਆਨਾ", "High": "ਉੱਚ"},
+#     "kn": {"Low": "ಕಡಿಮೆ", "Medium": "ಮಧ್ಯಮ", "High": "ಹೆಚ್ಚು"},
+#     "ta": {"Low": "குறைவு", "Medium": "மிதமான", "High": "அதிகம்"},
+# }
+
+# STATIC_TEXT = {
+#     "en": {
+#         "no_symptoms": "No symptoms detected.",
+#         "no_match": "No matching disease found. Please add more symptoms.",
+#         "multiple": "Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
+#         "you_may_have": "You may have",
+#         "severity": "Severity",
+#         "low_msg": "Home care and rest may help.",
+#         "medium_msg": "Monitor symptoms and consult a doctor if they worsen.",
+#         "high_msg": "Consult a doctor.",
+#         "emergency": "Seek immediate medical attention!",
+#     },
+#     "hi": {
+#         "no_symptoms": "कोई लक्षण नहीं मिले।",
+#         "no_match": "कोई मिलती-जुलती बीमारी नहीं मिली। कृपया और लक्षण जोड़ें।",
+#         "multiple": "आपके लक्षण कई बीमारियों से मेल खाते हैं। कृपया अधिक सटीक परिणाम के लिए और लक्षण जोड़ें।",
+#         "you_may_have": "आपको",
+#         "severity": "गंभीरता",
+#         "low_msg": "घर पर आराम और देखभाल मदद कर सकती है।",
+#         "medium_msg": "लक्षणों पर नज़र रखें और बढ़ने पर डॉक्टर से सलाह लें।",
+#         "high_msg": "एक डॉक्टर से परामर्श करें।",
+#         "emergency": "तुरंत चिकित्सकीय सहायता लें!",
+#     },
+#     "te": {
+#         "no_symptoms": "ఎలాంటి లక్షణాలు గుర్తించబడలేదు.",
+#         "no_match": "సరిపోయే వ్యాధి కనిపించలేదు. దయచేసి మరిన్ని లక్షణాలు ఇవ్వండి.",
+#         "multiple": "మీ లక్షణాలు అనేక వ్యాధులతో సరిపోతున్నాయి. ఖచ్చితమైన ఫలితాల కోసం మరిన్ని లక్షణాలు ఇవ్వండి.",
+#         "you_may_have": "మీకు",
+#         "severity": "తీవ్రత",
+#         "low_msg": "ఇంటివద్ద విశ్రాంతి మరియు జాగ్రత్తలు ఉపయోగపడవచ్చు.",
+#         "medium_msg": "లక్షణాలను గమనించండి. ఎక్కువైతే వైద్యుడిని సంప్రదించండి.",
+#         "high_msg": "వైద్యుడిని సంప్రదించండి.",
+#         "emergency": "వెంటనే వైద్య సహాయం పొందండి!",
+#     },
+#     "pa": {
+#         "no_symptoms": "ਕੋਈ ਲੱਛਣ ਨਹੀਂ ਮਿਲੇ।",
+#         "no_match": "ਕੋਈ ਮਿਲਦੀ ਬਿਮਾਰੀ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।",
+#         "multiple": "ਤੁਹਾਡੇ ਲੱਛਣ ਕਈ ਬਿਮਾਰੀਆਂ ਨਾਲ ਮਿਲਦੇ ਹਨ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।",
+#         "you_may_have": "ਤੁਹਾਨੂੰ",
+#         "severity": "ਤੀਬਰਤਾ",
+#         "low_msg": "ਘਰ ਵਿੱਚ ਆਰਾਮ ਅਤੇ ਦੇਖਭਾਲ ਮਦਦ ਕਰ ਸਕਦੀ ਹੈ।",
+#         "medium_msg": "ਲੱਛਣਾਂ 'ਤੇ ਨਜ਼ਰ ਰੱਖੋ ਅਤੇ ਵੱਧਣ 'ਤੇ ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।",
+#         "high_msg": "ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।",
+#         "emergency": "ਤੁਰੰਤ ਡਾਕਟਰੀ ਮਦਦ ਲਵੋ!",
+#     },
+#     "kn": {
+#         "no_symptoms": "ಯಾವ ಲಕ್ಷಣಗಳೂ ಕಂಡುಬಂದಿಲ್ಲ.",
+#         "no_match": "ಹೊಂದುವ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ. ದಯವಿಟ್ಟು ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ಸೇರಿಸಿ.",
+#         "multiple": "ನಿಮ್ಮ ಲಕ್ಷಣಗಳು ಹಲವಾರು ರೋಗಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುತ್ತಿವೆ. ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ನೀಡಿ.",
+#         "you_may_have": "ನಿಮಗೆ",
+#         "severity": "ತೀವ್ರತೆ",
+#         "low_msg": "ಮನೆ ವಿಶ್ರಾಂತಿ ಮತ್ತು ಜಾಗ್ರತೆ ಸಹಾಯವಾಗಬಹುದು.",
+#         "medium_msg": "ಲಕ್ಷಣಗಳನ್ನು ಗಮನಿಸಿ. ಹೆಚ್ಚಾದರೆ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+#         "high_msg": "ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+#         "emergency": "ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ!",
+#     },
+#     "ta": {
+#         "no_symptoms": "எந்த அறிகுறிகளும் கண்டறியப்படவில்லை.",
+#         "no_match": "பொருந்தும் நோய் எதுவும் கிடைக்கவில்லை. மேலும் அறிகுறிகள் அளிக்கவும்.",
+#         "multiple": "உங்கள் அறிகுறிகள் பல நோய்களுடன் பொருந்துகின்றன. மேலும் அறிகுறிகள் அளிக்கவும்.",
+#         "you_may_have": "உங்களுக்கு",
+#         "severity": "தீவிரம்",
+#         "low_msg": "வீட்டு ஓய்வு மற்றும் கவனம் உதவலாம்.",
+#         "medium_msg": "அறிகுறிகளை கவனியுங்கள். அதிகரித்தால் மருத்துவரை அணுகவும்.",
+#         "high_msg": "மருத்துவரை அணுகவும்.",
+#         "emergency": "உடனடி மருத்துவ உதவி பெறுங்கள்!",
+#     },
+# }
+
+
+# def t(lang: str, key: str) -> str:
+#     return STATIC_TEXT.get(lang, STATIC_TEXT["en"]).get(key, STATIC_TEXT["en"][key])
+
+
+# def cached_translate(text: str, lang: str) -> str:
+#     if not text or lang == "en":
+#         return text
+#     key = (text, lang)
+#     if key in TRANSLATION_CACHE:
+#         return TRANSLATION_CACHE[key]
+#     try:
+#         translated = translate_from_english(text, lang)
+#         TRANSLATION_CACHE[key] = translated if translated else text
+#         return TRANSLATION_CACHE[key]
+#     except Exception:
+#         TRANSLATION_CACHE[key] = text
+#         return text
+
+
+# def translate_many(texts: List[str], lang: str) -> List[str]:
+#     if lang == "en":
+#         return texts
+#     unique = []
+#     seen = set()
+#     for x in texts:
+#         if x not in seen:
+#             seen.add(x)
+#             unique.append(x)
+#     with ThreadPoolExecutor(max_workers=min(MAX_TRANSLATION_WORKERS, max(1, len(unique)))) as ex:
+#         translated_unique = list(ex.map(lambda x: cached_translate(x, lang), unique))
+#     mapping = dict(zip(unique, translated_unique))
+#     return [mapping.get(x, x) for x in texts]
+
+
+# def localize_symptom(symptom_key: str, lang: str) -> str:
+#     if lang == "en":
+#         return symptom_key
+#     if symptom_key in SYMPTOM_LABELS and lang in SYMPTOM_LABELS[symptom_key]:
+#         return SYMPTOM_LABELS[symptom_key][lang]
+#     return cached_translate(symptom_key.replace("_", " "), lang)
+
+
+# def localize_symptoms(symptoms: List[str], lang: str) -> List[str]:
+#     return [localize_symptom(s, lang) for s in symptoms]
+
+
+# def localize_severity(severity_en: str, lang: str) -> str:
+#     return SEVERITY_LABELS.get(lang, SEVERITY_LABELS["en"]).get(severity_en, severity_en)
+
+
+# def localize_disease_name(disease: str, lang: str) -> str:
+#     if lang == "en":
+#         return disease
+#     return cached_translate(disease, lang)
+
+
+# def localize_precautions(precautions: List[str], lang: str) -> List[str]:
+#     return translate_many(precautions, lang)
+
+
+# def build_summary(disease_name_en: str, severity_en: str, lang: str, emergency_flag: bool) -> str:
+#     disease_local = localize_disease_name(disease_name_en, lang)
+#     sev = localize_severity(severity_en, lang)
+#     if severity_en == "Low":
+#         msg = t(lang, "low_msg")
+#     elif severity_en == "Medium":
+#         msg = t(lang, "medium_msg")
+#     else:
+#         msg = t(lang, "high_msg")
+#     summary = f"{t(lang, 'you_may_have')} {disease_local}. {t(lang, 'severity')}: {sev}. {msg}"
+#     if emergency_flag:
+#         summary += f" 🚨 {t(lang, 'emergency')}"
+#     return summary
+
+
+# def load_artifacts():
+#     global model_data, meta_data, disease_precautions, symptom_descriptions
+#     artifacts_dir = Path("artifacts")
+#     model_path = artifacts_dir / "model.joblib"
+#     meta_path = artifacts_dir / "meta.json"
+#     precautions_path = artifacts_dir / "disease_precaution_map.json"
+#     descriptions_path = artifacts_dir / "symptom_description.json"
+
+#     if model_path.exists():
+#         model_data = joblib.load(model_path)
+#         print(f"✓ Loaded model from {model_path}")
+#     else:
+#         print("⚠️ model.joblib not found, using predictor.py fallback")
+
+#     if meta_path.exists():
+#         with open(meta_path, "r", encoding="utf-8") as f:
+#             meta_data = json.load(f)
+#     if precautions_path.exists():
+#         with open(precautions_path, "r", encoding="utf-8") as f:
+#             disease_precautions = json.load(f)
+#     if descriptions_path.exists():
+#         with open(descriptions_path, "r", encoding="utf-8") as f:
+#             symptom_descriptions = json.load(f)
+
+
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     load_artifacts()
+#     yield
+
+
+# app = FastAPI(title="Symptoms Checker API", version="3.1.0", lifespan=lifespan)
+# app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+
+# def process_audio_input(audio_base64: str, language_code: str) -> str:
+#     try:
+#         audio_bytes = base64.b64decode(audio_base64)
+#         try:
+#             cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(language_code, "en-US")
+#             return speech_to_text_cloud(audio_bytes, cloud_lang_code).strip()
+#         except Exception:
+#             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+#                 temp_file.write(audio_bytes)
+#                 temp_path = temp_file.name
+#             try:
+#                 return speech_to_text_local(temp_path).strip()
+#             finally:
+#                 if os.path.exists(temp_path):
+#                     os.unlink(temp_path)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
+
+
+# def ml_predict(symptoms: List[str]) -> List[Dict[str, Any]]:
+#     if not model_data or "model" not in model_data:
+#         return []
+#     model = model_data["model"]
+#     class_names = model_data.get("class_names") or model_data.get("diseases") or []
+#     feature_vector = build_feature_vector(symptoms, "artifacts").reshape(1, -1)
+
+#     if hasattr(model, "predict_proba"):
+#         probs = model.predict_proba(feature_vector)[0]
+#         results = []
+#         for disease, prob in zip(class_names, probs):
+#             matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#             if prob > 0:
+#                 results.append({
+#                     "disease": disease,
+#                     "score": float(prob),
+#                     "matched": matched,
+#                     "match_count": len(matched),
+#                     "missing_count": len(set(symptoms) - disease_map.get(disease, set()))
+#                 })
+#         results.sort(key=lambda x: x["score"], reverse=True)
+#         return results
+
+#     pred = model.predict(feature_vector)[0]
+#     disease = class_names[int(pred)]
+#     matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#     return [{
+#         "disease": disease,
+#         "score": 1.0,
+#         "matched": matched,
+#         "match_count": len(matched),
+#         "missing_count": len(set(symptoms) - disease_map.get(disease, set()))
+#     }]
+
+
+# def choose_predictions(symptoms: List[str], pred_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+#     if not pred_results:
+#         return []
+#     if len(symptoms) <= 2 and len(pred_results) > 1:
+#         top_gap = pred_results[0]["score"] - pred_results[1]["score"]
+#         if top_gap < 0.12:
+#             return []
+#     if len(symptoms) >= 3:
+#         return pred_results[:3]
+#     return pred_results[:1]
+
+
+# def generate_tts_audio(display_text: str, lang: str) -> Optional[str]:
+#     try:
+#         lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(lang, "en-US")
+#         try:
+#             _, audio_bytes = text_to_speech_cloud(display_text, lang_code)
+#         except Exception:
+#             _, audio_bytes, temp_path = text_to_speech_local(display_text, lang)
+#             if os.path.exists(temp_path):
+#                 os.unlink(temp_path)
+#         return base64.b64encode(audio_bytes).decode("utf-8")
+#     except Exception:
+#         return None
+
+
+# @app.get("/health")
+# async def health_check():
+#     return {"status": "healthy", "model_loaded": model_data is not None}
+
+
+# @app.post("/predict", response_model=PredictResponse)
+# async def predict(request: PredictRequest):
+#     try:
+#         if request.input_type not in ["text", "audio"]:
+#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
+#         if request.mode not in ["text", "voice"]:
+#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
+
+#         input_text_user_lang = process_audio_input(request.input, request.language) if request.input_type == "audio" else request.input
+#         if not input_text_user_lang.strip():
+#             raise HTTPException(status_code=400, detail="No text found in input")
+
+#         detected_lang = detect_language(input_text_user_lang)
+#         source_lang = request.language if request.language != "en" else detected_lang
+#         input_text = input_text_user_lang if source_lang == "en" else translate_to_english(input_text_user_lang, source_lang)
+
+#         symptoms = extract_symptoms(input_text)
+#         symptoms_translated = localize_symptoms(symptoms, request.language)
+
+#         if not symptoms:
+#             display_text = t(request.language, "no_symptoms")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms_translated if request.language != "en" else [],
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=symptoms_translated,
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang},
+#             )
+
+#         pred_results = ml_predict(symptoms)
+#         if not pred_results:
+#             pred_results = predict_disease(symptoms, disease_map)
+
+#         selected = choose_predictions(symptoms, pred_results)
+#         if not selected:
+#             display_text = t(request.language, "multiple")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms_translated if request.language != "en" else symptoms,
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=symptoms_translated,
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang, "used_ml_model": bool(model_data and "model" in model_data)},
+#             )
+
+#         emergency_flag = is_emergency(symptoms)
+#         disease_predictions = []
+#         predictions_translated = []
+
+#         for item in selected:
+#             disease = item["disease"]
+#             matched = item.get("matched", [])
+#             precautions = disease_precautions.get(disease, [])
+#             severity_en = calculate_severity(matched, severity_dict)
+#             if emergency_flag and severity_en != "High":
+#                 severity_en = "High"
+
+#             english_pred = DiseasePrediction(
+#                 disease=disease,
+#                 prob=float(item["score"]),
+#                 severity=severity_en,
+#                 precautions=precautions,
+#                 symptom_descriptions={s: symptom_descriptions.get(s, "") for s in matched},
+#             )
+#             disease_predictions.append(english_pred)
+
+#             translated_pred = DiseasePrediction(
+#                 disease=localize_disease_name(disease, request.language),
+#                 prob=float(item["score"]),
+#                 severity=localize_severity(severity_en, request.language),
+#                 precautions=localize_precautions(precautions, request.language),
+#                 symptom_descriptions={localize_symptom(k, request.language): cached_translate(v, request.language) if v else "" for k, v in english_pred.symptom_descriptions.items()},
+#             )
+#             predictions_translated.append(translated_pred)
+
+#         top_prediction = disease_predictions[0]
+#         display_text = build_summary(top_prediction.disease, top_prediction.severity, request.language, emergency_flag)
+#         tts_audio_base64 = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+
+#         return PredictResponse(
+#             input_text=input_text,
+#             input_text_user_lang=input_text_user_lang,
+#             symptoms=symptoms_translated if request.language != "en" else symptoms,
+#             predictions=disease_predictions,
+#             predictions_translated=predictions_translated if request.language != "en" else None,
+#             symptoms_translated=symptoms_translated if request.language != "en" else None,
+#             language=request.language,
+#             display_text=display_text,
+#             tts_audio_base64=tts_audio_base64,
+#             debug={"detected_lang": detected_lang, "used_ml_model": bool(model_data and "model" in model_data)},
+#         )
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Prediction error: {e}")
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# def find_available_port(start_port=8000, max_port=8010):
+#     import socket
+#     for port in range(start_port, max_port + 1):
+#         try:
+#             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#                 s.bind(("0.0.0.0", port))
+#                 return port
+#         except OSError:
+#             continue
+#     raise RuntimeError(f"No available port found between {start_port} and {max_port}")
+
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = find_available_port()
+#     print(f"⚡ API running on http://localhost:{port}")
+#     print(f"📚 API Documentation: http://localhost:{port}/docs")
+#     print(f"❤️ Health Check: http://localhost:{port}/health")
+#     print("=" * 50)
+#     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+
+# #THIS IS FOR NEW ML MODEL.
+# """
+# FastAPI application for SymptoSure.
+# ML-model-backed + fast multilingual response translation.
+# """
+
+# import base64
+# import json
+# import os
+# import tempfile
+# from pathlib import Path
+# from typing import List, Dict, Any, Optional, Tuple
+# from contextlib import asynccontextmanager
+# from concurrent.futures import ThreadPoolExecutor
+
+# import joblib
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel, Field
+
+# from translator import translate_to_english, translate_from_english, detect_language
+# from symptom_extractor import extract_symptoms
+# from feature_engineer import build_feature_vector
+# from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
+# from severity import load_severity, calculate_severity
+# from predictor import load_disease_map, predict_disease
+# from emergency import is_emergency
+
+
+# class PredictRequest(BaseModel):
+#     input: str = Field(...)
+#     input_type: str = Field(...)
+#     language: str = Field(...)
+#     mode: str = Field(...)
+
+
+# class DiseasePrediction(BaseModel):
+#     disease: str
+#     prob: float
+#     severity: str
+#     precautions: List[str]
+#     symptom_descriptions: Dict[str, str]
+
+
+# class PredictResponse(BaseModel):
+#     input_text: str
+#     input_text_user_lang: str
+#     symptoms: List[str]
+#     predictions: List[DiseasePrediction]
+#     predictions_translated: Optional[List[DiseasePrediction]] = None
+#     symptoms_translated: Optional[List[str]] = None
+#     language: str
+#     display_text: str
+#     tts_audio_base64: Optional[str] = None
+#     debug: Optional[Dict[str, Any]] = None
+
+
+# severity_dict = load_severity()
+# disease_map = load_disease_map()
+
+# model_data = None
+# meta_data = None
+# disease_precautions = {}
+# symptom_descriptions = {}
+
+# TRANSLATION_CACHE: Dict[Tuple[str, str], str] = {}
+# MAX_TRANSLATION_WORKERS = 8
+
+
+# SYMPTOM_LABELS = {
+#     "headache": {"en": "headache", "hi": "सिरदर्द", "te": "తలనొప్పి", "pa": "ਸਿਰ ਦਰਦ", "kn": "ತಲೆನೋವು", "ta": "தலைவலி"},
+#     "high_fever": {"en": "high fever", "hi": "तेज बुखार", "te": "అధిక జ్వరం", "pa": "ਤੇਜ਼ ਬੁਖਾਰ", "kn": "ತಿೀವ್ರ ಜ್ವರ", "ta": "அதிக காய்ச்சல்"},
+#     "mild_fever": {"en": "mild fever", "hi": "हल्का बुखार", "te": "తేలికపాటి జ్వరం", "pa": "ਹਲਕਾ ਬੁਖਾਰ", "kn": "ಸ್ವಲ್ಪ ಜ್ವರ", "ta": "லேசான காய்ச்சல்"},
+#     "vomiting": {"en": "vomiting", "hi": "उल्टी", "te": "వాంతులు", "pa": "ਉਲਟੀ", "kn": "ವಾಂತಿ", "ta": "வாந்தி"},
+#     "nausea": {"en": "nausea", "hi": "मतली", "te": "వికారం", "pa": "ਮਤਲੀ", "kn": "ಛರ್ಡಿ ಭಾವನೆ", "ta": "குமட்டல்"},
+#     "cough": {"en": "cough", "hi": "खांसी", "te": "దగ్గు", "pa": "ਖੰਘ", "kn": "ಕೆಮ್ಮು", "ta": "இருமல்"},
+#     "dizziness": {"en": "dizziness", "hi": "चक्कर", "te": "తల తిరగడం", "pa": "ਚੱਕਰ", "kn": "ತಲೆ ಸುತ್ತು", "ta": "தலைசுற்றல்"},
+#     "skin_rash": {"en": "skin rash", "hi": "त्वचा पर चकत्ते", "te": "చర్మ దద్దుర్లు", "pa": "ਚਮੜੀ ਦੇ ਦਾਣੇ", "kn": "ಚರ್ಮದ ಉರಿ", "ta": "சருமச் சிரங்கு"},
+#     "itching": {"en": "itching", "hi": "खुजली", "te": "దురద", "pa": "ਖੁਜਲੀ", "kn": "ಖಜ್ಜಳಿ", "ta": "அரிப்பு"},
+#     "fatigue": {"en": "fatigue", "hi": "थकान", "te": "అలసట", "pa": "ਥਕਾਵਟ", "kn": "ದಣಿವು", "ta": "சோர்வு"},
+#     "back_pain": {"en": "back pain", "hi": "पीठ दर्द", "te": "నడుం నొప్పి", "pa": "ਪੀਠ ਦਰਦ", "kn": "ಬೆನ್ನು ನೋವು", "ta": "முதுகு வலி"},
+#     "neck_pain": {"en": "neck pain", "hi": "गर्दन दर्द", "te": "మెడ నొప్పి", "pa": "ਗਰਦਨ ਦਰਦ", "kn": "ಕತ್ತು ನೋವು", "ta": "கழுத்து வலி"},
+#     "chest_pain": {"en": "chest pain", "hi": "सीने में दर्द", "te": "ఛాతి నొప్పి", "pa": "ਸੀਨੇ ਵਿੱਚ ਦਰਦ", "kn": "ಛಾತಿ ನೋವು", "ta": "மார்பு வலி"},
+#     "breathlessness": {"en": "breathlessness", "hi": "सांस लेने में तकलीफ", "te": "శ్వాస ఇబ్బంది", "pa": "ਸਾਹ ਲੈਣ ਵਿੱਚ ਦਿੱਕਤ", "kn": "ಉಸಿರಾಟದ ತೊಂದರೆ", "ta": "மூச்சுத்திணறல்"},
+#     "runny_nose": {"en": "runny nose", "hi": "नाक बहना", "te": "ముక్కు కారడం", "pa": "ਨੱਕ ਵਗਣਾ", "kn": "ಮೂಗು ಹರಿಯುವುದು", "ta": "மூக்கு வடிதல்"},
+#     "congestion": {"en": "congestion", "hi": "नाक बंद", "te": "ముక్కు దిగబడటం", "pa": "ਨੱਕ ਬੰਦ", "kn": "ಮೂಗು ಮುಚ್ಚಿಕೊಳ್ಳುವುದು", "ta": "மூக்கு அடைப்பு"},
+#     "throat_irritation": {"en": "throat irritation", "hi": "गले में जलन", "te": "గొంతు రాపిడి", "pa": "ਗਲੇ ਵਿੱਚ ਜਲਣ", "kn": "ಗಂಟಲು ಕೆರಡು", "ta": "தொண்டை எரிச்சல்"},
+#     "sweating": {"en": "sweating", "hi": "पसीना", "te": "చెమటలు", "pa": "ਪਸੀਨਾ", "kn": "ಬೆವರು", "ta": "வியர்வை"},
+#     "weight_loss": {"en": "weight loss", "hi": "वजन कम होना", "te": "బరువు తగ్గడం", "pa": "ਵਜ਼ਨ ਘਟਣਾ", "kn": "ತೂಕ ಇಳಿಯುವುದು", "ta": "எடை குறைவு"},
+#     "loss_of_appetite": {"en": "loss of appetite", "hi": "भूख कम लगना", "te": "ఆకలి తగ్గడం", "pa": "ਭੁੱਖ ਘੱਟ ਲੱਗਣਾ", "kn": "ಭುಕ್ಕಿ ಕಡಿಮೆ", "ta": "பசியின்மை"},
+#     "abdominal_pain": {"en": "abdominal pain", "hi": "पेट दर्द", "te": "కడుపు నొప్పి", "pa": "ਪੇਟ ਦਰਦ", "kn": "ಹೊಟ್ಟೆ ನೋವು", "ta": "வயிற்று வலி"},
+#     "joint_pain": {"en": "joint pain", "hi": "जोड़ों में दर्द", "te": "సంధుల నొప్పి", "pa": "ਜੋੜ ਦਰਦ", "kn": "ಸಂಧಿ ನೋವು", "ta": "மூட்டு வலி"},
+#     "muscle_pain": {"en": "muscle pain", "hi": "मांसपेशियों में दर्द", "te": "కండరాల నొప్పి", "pa": "ਮਾਸਪੇਸ਼ੀ ਦਰਦ", "kn": "ಸ್ನಾಯು ನೋವು", "ta": "தசை வலி"},
+#     "chills": {"en": "chills", "hi": "कंपकंपी", "te": "చలి", "pa": "ਠੰਢ ਲੱਗਣਾ", "kn": "ಚಳಿ ಹಿಡಿಯುವುದು", "ta": "சளிச்சல்"},
+#     "insomnia": {"en": "insomnia", "hi": "अनिद्रा", "te": "నిద్రలేమి", "pa": "ਅਨੀਂਦਰਾ", "kn": "ನಿದ್ರಾಹೀನತೆ", "ta": "தூக்கமின்மை"},
+#     "weakness_of_one_body_side": {"en": "weakness of one body side", "hi": "शरीर के एक तरफ कमजोरी", "te": "ఒకవైపు బలహీనత", "pa": "ਸ਼ਰੀਰ ਦੇ ਇੱਕ ਪਾਸੇ ਕਮਜ਼ੋਰੀ", "kn": "ದೇಹದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ", "ta": "உடலின் ஒரு பக்க பலவீனம்"},
+# }
+
+# SEVERITY_LABELS = {
+#     "en": {"Low": "Low", "Medium": "Medium", "High": "High"},
+#     "hi": {"Low": "कम", "Medium": "मध्यम", "High": "उच्च"},
+#     "te": {"Low": "తక్కువ", "Medium": "మధ్యస్థ", "High": "అధికం"},
+#     "pa": {"Low": "ਘੱਟ", "Medium": "ਦਰਮਿਆਨਾ", "High": "ਉੱਚ"},
+#     "kn": {"Low": "ಕಡಿಮೆ", "Medium": "ಮಧ್ಯಮ", "High": "ಹೆಚ್ಚು"},
+#     "ta": {"Low": "குறைவு", "Medium": "மிதமான", "High": "அதிகம்"},
+# }
+
+# STATIC_TEXT = {
+#     "en": {
+#         "no_symptoms": "No symptoms detected.",
+#         "no_match": "No matching disease found. Please add more symptoms.",
+#         "multiple": "Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
+#         "you_may_have": "You may have",
+#         "severity": "Severity",
+#         "low_msg": "Home care and rest may help.",
+#         "medium_msg": "Monitor symptoms and consult a doctor if they worsen.",
+#         "high_msg": "Consult a doctor.",
+#         "emergency": "Seek immediate medical attention!",
+#     },
+#     "hi": {
+#         "no_symptoms": "कोई लक्षण नहीं मिले।",
+#         "no_match": "कोई मिलती-जुलती बीमारी नहीं मिली। कृपया और लक्षण जोड़ें।",
+#         "multiple": "आपके लक्षण कई बीमारियों से मेल खाते हैं। कृपया अधिक सटीक परिणाम के लिए और लक्षण जोड़ें।",
+#         "you_may_have": "आपको",
+#         "severity": "गंभीरता",
+#         "low_msg": "घर पर आराम और देखभाल मदद कर सकती है।",
+#         "medium_msg": "लक्षणों पर नज़र रखें और बढ़ने पर डॉक्टर से सलाह लें।",
+#         "high_msg": "एक डॉक्टर से परामर्श करें।",
+#         "emergency": "तुरंत चिकित्सकीय सहायता लें!",
+#     },
+#     "te": {
+#         "no_symptoms": "ఎలాంటి లక్షణాలు గుర్తించబడలేదు.",
+#         "no_match": "సరిపోయే వ్యాధి కనిపించలేదు. దయచేసి మరిన్ని లక్షణాలు ఇవ్వండి.",
+#         "multiple": "మీ లక్షణాలు అనేక వ్యాధులతో సరిపోతున్నాయి. ఖచ్చితమైన ఫలితాల కోసం మరిన్ని లక్షణాలు ఇవ్వండి.",
+#         "you_may_have": "మీకు",
+#         "severity": "తీవ్రత",
+#         "low_msg": "ఇంటివద్ద విశ్రాంతి మరియు జాగ్రత్తలు ఉపయోగపడవచ్చు.",
+#         "medium_msg": "లక్షణాలను గమనించండి. ఎక్కువైతే వైద్యుడిని సంప్రదించండి.",
+#         "high_msg": "వైద్యుడిని సంప్రదించండి.",
+#         "emergency": "వెంటనే వైద్య సహాయం పొందండి!",
+#     },
+#     "pa": {
+#         "no_symptoms": "ਕੋਈ ਲੱਛਣ ਨਹੀਂ ਮਿਲੇ।",
+#         "no_match": "ਕੋਈ ਮਿਲਦੀ ਬਿਮਾਰੀ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।",
+#         "multiple": "ਤੁਹਾਡੇ ਲੱਛਣ ਕਈ ਬਿਮਾਰੀਆਂ ਨਾਲ ਮਿਲਦੇ ਹਨ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।",
+#         "you_may_have": "ਤੁਹਾਨੂੰ",
+#         "severity": "ਤੀਬਰਤਾ",
+#         "low_msg": "ਘਰ ਵਿੱਚ ਆਰਾਮ ਅਤੇ ਦੇਖਭਾਲ ਮਦਦ ਕਰ ਸਕਦੀ ਹੈ।",
+#         "medium_msg": "ਲੱਛਣਾਂ 'ਤੇ ਨਜ਼ਰ ਰੱਖੋ ਅਤੇ ਵੱਧਣ 'ਤੇ ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।",
+#         "high_msg": "ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।",
+#         "emergency": "ਤੁਰੰਤ ਡਾਕਟਰੀ ਮਦਦ ਲਵੋ!",
+#     },
+#     "kn": {
+#         "no_symptoms": "ಯಾವ ಲಕ್ಷಣಗಳೂ ಕಂಡುಬಂದಿಲ್ಲ.",
+#         "no_match": "ಹೊಂದುವ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ. ದಯವಿಟ್ಟು ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ಸೇರಿಸಿ.",
+#         "multiple": "ನಿಮ್ಮ ಲಕ್ಷಣಗಳು ಹಲವಾರು ರೋಗಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುತ್ತಿವೆ. ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ನೀಡಿ.",
+#         "you_may_have": "ನಿಮಗೆ",
+#         "severity": "ತೀವ್ರತೆ",
+#         "low_msg": "ಮನೆ ವಿಶ್ರಾಂತಿ ಮತ್ತು ಜಾಗ್ರತೆ ಸಹಾಯವಾಗಬಹುದು.",
+#         "medium_msg": "ಲಕ್ಷಣಗಳನ್ನು ಗಮನಿಸಿ. ಹೆಚ್ಚಾದರೆ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+#         "high_msg": "ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+#         "emergency": "ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ!",
+#     },
+#     "ta": {
+#         "no_symptoms": "எந்த அறிகுறிகளும் கண்டறியப்படவில்லை.",
+#         "no_match": "பொருந்தும் நோய் எதுவும் கிடைக்கவில்லை. மேலும் அறிகுறிகள் அளிக்கவும்.",
+#         "multiple": "உங்கள் அறிகுறிகள் பல நோய்களுடன் பொருந்துகின்றன. மேலும் அறிகுறிகள் அளிக்கவும்.",
+#         "you_may_have": "உங்களுக்கு",
+#         "severity": "தீவிரம்",
+#         "low_msg": "வீட்டு ஓய்வு மற்றும் கவனம் உதவலாம்.",
+#         "medium_msg": "அறிகுறிகளை கவனியுங்கள். அதிகரித்தால் மருத்துவரை அணுகவும்.",
+#         "high_msg": "மருத்துவரை அணுகவும்.",
+#         "emergency": "உடனடி மருத்துவ உதவி பெறுங்கள்!",
+#     },
+# }
+
+
+# def t(lang: str, key: str) -> str:
+#     return STATIC_TEXT.get(lang, STATIC_TEXT["en"]).get(key, STATIC_TEXT["en"][key])
+
+
+# def cached_translate(text: str, lang: str) -> str:
+#     if not text or lang == "en":
+#         return text
+#     key = (text, lang)
+#     if key in TRANSLATION_CACHE:
+#         return TRANSLATION_CACHE[key]
+#     try:
+#         translated = translate_from_english(text, lang)
+#         TRANSLATION_CACHE[key] = translated if translated else text
+#         return TRANSLATION_CACHE[key]
+#     except Exception:
+#         TRANSLATION_CACHE[key] = text
+#         return text
+
+
+# def translate_many(texts: List[str], lang: str) -> List[str]:
+#     if lang == "en":
+#         return texts
+#     unique = []
+#     seen = set()
+#     for x in texts:
+#         if x not in seen:
+#             seen.add(x)
+#             unique.append(x)
+#     with ThreadPoolExecutor(max_workers=min(MAX_TRANSLATION_WORKERS, max(1, len(unique)))) as ex:
+#         translated_unique = list(ex.map(lambda x: cached_translate(x, lang), unique))
+#     mapping = dict(zip(unique, translated_unique))
+#     return [mapping.get(x, x) for x in texts]
+
+
+# def localize_symptom(symptom_key: str, lang: str) -> str:
+#     if lang == "en":
+#         return symptom_key
+#     if symptom_key in SYMPTOM_LABELS and lang in SYMPTOM_LABELS[symptom_key]:
+#         return SYMPTOM_LABELS[symptom_key][lang]
+#     return cached_translate(symptom_key.replace("_", " "), lang)
+
+
+# def localize_symptoms(symptoms: List[str], lang: str) -> List[str]:
+#     return [localize_symptom(s, lang) for s in symptoms]
+
+
+# def localize_severity(severity_en: str, lang: str) -> str:
+#     return SEVERITY_LABELS.get(lang, SEVERITY_LABELS["en"]).get(severity_en, severity_en)
+
+
+# def localize_disease_name(disease: str, lang: str) -> str:
+#     if lang == "en":
+#         return disease
+#     return cached_translate(disease, lang)
+
+
+# def localize_precautions(precautions: List[str], lang: str) -> List[str]:
+#     return translate_many(precautions, lang)
+
+
+# def build_summary(disease_name_en: str, severity_en: str, lang: str, emergency_flag: bool) -> str:
+#     disease_local = localize_disease_name(disease_name_en, lang)
+#     sev = localize_severity(severity_en, lang)
+#     if severity_en == "Low":
+#         msg = t(lang, "low_msg")
+#     elif severity_en == "Medium":
+#         msg = t(lang, "medium_msg")
+#     else:
+#         msg = t(lang, "high_msg")
+#     summary = f"{t(lang, 'you_may_have')} {disease_local}. {t(lang, 'severity')}: {sev}. {msg}"
+#     if emergency_flag:
+#         summary += f" 🚨 {t(lang, 'emergency')}"
+#     return summary
+
+
+# def load_artifacts():
+#     global model_data, meta_data, disease_precautions, symptom_descriptions
+#     artifacts_dir = Path("artifacts")
+#     model_path = artifacts_dir / "model.joblib"
+#     meta_path = artifacts_dir / "meta.json"
+#     precautions_path = artifacts_dir / "disease_precaution_map.json"
+#     descriptions_path = artifacts_dir / "symptom_description.json"
+
+#     if model_path.exists():
+#         model_data = joblib.load(model_path)
+#         print(f"✓ Loaded model from {model_path}")
+#     else:
+#         print("⚠️ model.joblib not found, using predictor.py fallback")
+
+#     if meta_path.exists():
+#         with open(meta_path, "r", encoding="utf-8") as f:
+#             meta_data = json.load(f)
+#     if precautions_path.exists():
+#         with open(precautions_path, "r", encoding="utf-8") as f:
+#             disease_precautions = json.load(f)
+#     if descriptions_path.exists():
+#         with open(descriptions_path, "r", encoding="utf-8") as f:
+#             symptom_descriptions = json.load(f)
+
+
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     load_artifacts()
+#     yield
+
+
+# app = FastAPI(title="Symptoms Checker API", version="3.1.0", lifespan=lifespan)
+# app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+
+# def process_audio_input(audio_base64: str, language_code: str) -> str:
+#     try:
+#         audio_bytes = base64.b64decode(audio_base64)
+#         try:
+#             cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(language_code, "en-US")
+#             return speech_to_text_cloud(audio_bytes, cloud_lang_code).strip()
+#         except Exception:
+#             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+#                 temp_file.write(audio_bytes)
+#                 temp_path = temp_file.name
+#             try:
+#                 return speech_to_text_local(temp_path).strip()
+#             finally:
+#                 if os.path.exists(temp_path):
+#                     os.unlink(temp_path)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
+
+
+# def ml_predict(symptoms: List[str]) -> List[Dict[str, Any]]:
+#     if not model_data or "model" not in model_data:
+#         return []
+#     model = model_data["model"]
+#     class_names = model_data.get("class_names") or model_data.get("diseases") or []
+#     feature_vector = build_feature_vector(symptoms, "artifacts").reshape(1, -1)
+
+#     if hasattr(model, "predict_proba"):
+#         probs = model.predict_proba(feature_vector)[0]
+#         results = []
+#         for disease, prob in zip(class_names, probs):
+#             matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#             if prob > 0:
+#                 results.append({
+#                     "disease": disease,
+#                     "score": float(prob),
+#                     "matched": matched,
+#                     "match_count": len(matched),
+#                     "missing_count": len(set(symptoms) - disease_map.get(disease, set()))
+#                 })
+#         results.sort(key=lambda x: x["score"], reverse=True)
+#         return results
+
+#     pred = model.predict(feature_vector)[0]
+#     disease = class_names[int(pred)]
+#     matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#     return [{
+#         "disease": disease,
+#         "score": 1.0,
+#         "matched": matched,
+#         "match_count": len(matched),
+#         "missing_count": len(set(symptoms) - disease_map.get(disease, set()))
+#     }]
+
+
+# def choose_predictions(symptoms: List[str], pred_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+#     if not pred_results:
+#         return []
+#     if len(symptoms) <= 2 and len(pred_results) > 1:
+#         top_gap = pred_results[0]["score"] - pred_results[1]["score"]
+#         if top_gap < 0.12:
+#             return []
+#     if len(symptoms) >= 3:
+#         return pred_results[:3]
+#     return pred_results[:1]
+
+
+# def generate_tts_audio(display_text: str, lang: str) -> Optional[str]:
+#     try:
+#         lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(lang, "en-US")
+#         try:
+#             _, audio_bytes = text_to_speech_cloud(display_text, lang_code)
+#         except Exception:
+#             _, audio_bytes, temp_path = text_to_speech_local(display_text, lang)
+#             if os.path.exists(temp_path):
+#                 os.unlink(temp_path)
+#         return base64.b64encode(audio_bytes).decode("utf-8")
+#     except Exception:
+#         return None
+
+
+# @app.get("/health")
+# async def health_check():
+#     return {"status": "healthy", "model_loaded": model_data is not None}
+
+
+# @app.post("/predict", response_model=PredictResponse)
+# async def predict(request: PredictRequest):
+#     try:
+#         if request.input_type not in ["text", "audio"]:
+#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
+#         if request.mode not in ["text", "voice"]:
+#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
+
+#         input_text_user_lang = process_audio_input(request.input, request.language) if request.input_type == "audio" else request.input
+#         if not input_text_user_lang.strip():
+#             raise HTTPException(status_code=400, detail="No text found in input")
+
+#         detected_lang = detect_language(input_text_user_lang)
+#         source_lang = request.language if request.language != "en" else detected_lang
+#         input_text = input_text_user_lang if source_lang == "en" else translate_to_english(input_text_user_lang, source_lang)
+
+#         symptoms = extract_symptoms(input_text)
+#         symptoms_translated = localize_symptoms(symptoms, request.language)
+
+#         if not symptoms:
+#             display_text = t(request.language, "no_symptoms")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms_translated if request.language != "en" else [],
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=symptoms_translated,
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang},
+#             )
+
+#         pred_results = ml_predict(symptoms)
+#         if not pred_results:
+#             pred_results = predict_disease(symptoms, disease_map)
+
+#         selected = choose_predictions(symptoms, pred_results)
+#         if not selected:
+#             display_text = t(request.language, "multiple")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms_translated if request.language != "en" else symptoms,
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=symptoms_translated,
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang, "used_ml_model": bool(model_data and "model" in model_data)},
+#             )
+
+#         emergency_flag = is_emergency(symptoms)
+#         disease_predictions = []
+#         predictions_translated = []
+
+#         for item in selected:
+#             disease = item["disease"]
+#             matched = item.get("matched", [])
+#             precautions = disease_precautions.get(disease, [])
+#             severity_en = calculate_severity(matched, severity_dict)
+#             if emergency_flag and severity_en != "High":
+#                 severity_en = "High"
+
+#             english_pred = DiseasePrediction(
+#                 disease=disease,
+#                 prob=float(item["score"]),
+#                 severity=severity_en,
+#                 precautions=precautions,
+#                 symptom_descriptions={s: symptom_descriptions.get(s, "") for s in matched},
+#             )
+#             disease_predictions.append(english_pred)
+
+#             translated_pred = DiseasePrediction(
+#                 disease=localize_disease_name(disease, request.language),
+#                 prob=float(item["score"]),
+#                 severity=localize_severity(severity_en, request.language),
+#                 precautions=localize_precautions(precautions, request.language),
+#                 symptom_descriptions={localize_symptom(k, request.language): cached_translate(v, request.language) if v else "" for k, v in english_pred.symptom_descriptions.items()},
+#             )
+#             predictions_translated.append(translated_pred)
+
+#         top_prediction = disease_predictions[0]
+#         display_text = build_summary(top_prediction.disease, top_prediction.severity, request.language, emergency_flag)
+#         tts_audio_base64 = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+
+#         return PredictResponse(
+#             input_text=input_text,
+#             input_text_user_lang=input_text_user_lang,
+#             symptoms=symptoms_translated if request.language != "en" else symptoms,
+#             predictions=disease_predictions,
+#             predictions_translated=predictions_translated if request.language != "en" else None,
+#             symptoms_translated=symptoms_translated if request.language != "en" else None,
+#             language=request.language,
+#             display_text=display_text,
+#             tts_audio_base64=tts_audio_base64,
+#             debug={"detected_lang": detected_lang, "used_ml_model": bool(model_data and "model" in model_data)},
+#         )
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Prediction error: {e}")
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# def find_available_port(start_port=8000, max_port=8010):
+#     import socket
+#     for port in range(start_port, max_port + 1):
+#         try:
+#             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#                 s.bind(("0.0.0.0", port))
+#                 return port
+#         except OSError:
+#             continue
+#     raise RuntimeError(f"No available port found between {start_port} and {max_port}")
+
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = find_available_port()
+#     print(f"⚡ API running on http://localhost:{port}")
+#     print(f"📚 API Documentation: http://localhost:{port}/docs")
+#     print(f"❤️ Health Check: http://localhost:{port}/health")
+#     print("=" * 50)
+#     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+
+
+
+
+#THIS IS ABSOLUTELY CORRECT
+# import base64
+# import json
+# import os
+# import tempfile
+# from pathlib import Path
+# from typing import List, Dict, Any, Optional, Tuple
+# from contextlib import asynccontextmanager
+# from concurrent.futures import ThreadPoolExecutor
+
+# import joblib
+# from fastapi import FastAPI, HTTPException
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel, Field
+
+# from translator import translate_to_english, translate_from_english, detect_language
+# from symptom_extractor import extract_symptoms
+# from feature_engineer import build_feature_vector
+# from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
+# from severity import load_severity, calculate_severity
+# from predictor import load_disease_map, predict_disease
+# from emergency import is_emergency
+
+
+# class PredictRequest(BaseModel):
+#     input: str = Field(...)
+#     input_type: str = Field(...)
+#     language: str = Field(...)
+#     mode: str = Field(...)
+
+
+# class DiseasePrediction(BaseModel):
+#     disease: str
+#     prob: float
+#     severity: str
+#     precautions: List[str]
+#     symptom_descriptions: Dict[str, str]
+
+
+# class PredictResponse(BaseModel):
+#     input_text: str
+#     input_text_user_lang: str
+#     symptoms: List[str]
+#     predictions: List[DiseasePrediction]
+#     predictions_translated: Optional[List[DiseasePrediction]] = None
+#     symptoms_translated: Optional[List[str]] = None
+#     language: str
+#     display_text: str
+#     tts_audio_base64: Optional[str] = None
+#     debug: Optional[Dict[str, Any]] = None
+
+
+# severity_dict = load_severity()
+# disease_map = load_disease_map()
+
+# model_data = None
+# meta_data = None
+# disease_precautions = {}
+# symptom_descriptions = {}
+
+# TRANSLATION_CACHE: Dict[Tuple[str, str], str] = {}
+# MAX_TRANSLATION_WORKERS = 8
+
+# SYMPTOM_LABELS = {
+#     "headache": {"en": "headache", "hi": "सिरदर्द", "te": "తలనొప్పి", "pa": "ਸਿਰ ਦਰਦ", "kn": "ತಲೆನೋವು", "ta": "தலைவலி"},
+#     "high_fever": {"en": "high fever", "hi": "तेज बुखार", "te": "అధిక జ్వరం", "pa": "ਤੇਜ਼ ਬੁਖਾਰ", "kn": "ತೀವ್ರ ಜ್ವರ", "ta": "அதிக காய்ச்சல்"},
+#     "mild_fever": {"en": "mild fever", "hi": "हल्का बुखार", "te": "తేలికపాటి జ్వరం", "pa": "ਹਲਕਾ ਬੁਖਾਰ", "kn": "ಸ್ವಲ್ಪ ಜ್ವರ", "ta": "லேசான காய்ச்சல்"},
+#     "vomiting": {"en": "vomiting", "hi": "उल्टी", "te": "వాంతులు", "pa": "ਉਲਟੀ", "kn": "ವಾಂತಿ", "ta": "வாந்தி"},
+#     "nausea": {"en": "nausea", "hi": "मतली", "te": "వికారం", "pa": "ਮਤਲੀ", "kn": "ಛರ್ಡಿ ಭಾವನೆ", "ta": "குமட்டல்"},
+#     "cough": {"en": "cough", "hi": "खांसी", "te": "దగ్గు", "pa": "ਖੰਘ", "kn": "ಕೆಮ್ಮು", "ta": "இருமல்"},
+#     "dizziness": {"en": "dizziness", "hi": "चक्कर", "te": "తల తిరగడం", "pa": "ਚੱਕਰ", "kn": "ತಲೆ ಸುತ್ತು", "ta": "தலைசுற்றல்"},
+#     "skin_rash": {"en": "skin rash", "hi": "त्वचा पर चकत्ते", "te": "చర్మ దద్దుర్లు", "pa": "ਚਮੜੀ ਦੇ ਦਾਣੇ", "kn": "ಚರ್ಮದ ಉರಿ", "ta": "சருமச் சிரங்கு"},
+#     "itching": {"en": "itching", "hi": "खुजली", "te": "దురద", "pa": "ਖੁਜਲੀ", "kn": "ಖಜ್ಜಳಿ", "ta": "அரிப்பு"},
+#     "fatigue": {"en": "fatigue", "hi": "थकान", "te": "అలసట", "pa": "ਥਕਾਵਟ", "kn": "ದಣಿವು", "ta": "சோர்வு"},
+#     "back_pain": {"en": "back pain", "hi": "पीठ दर्द", "te": "నడుం నొప్పి", "pa": "ਪੀਠ ਦਰਦ", "kn": "ಬೆನ್ನು ನೋವು", "ta": "முதுகு வலி"},
+#     "neck_pain": {"en": "neck pain", "hi": "गर्दन दर्द", "te": "మెడ నొప్పి", "pa": "ਗਰਦਨ ਦਰਦ", "kn": "ಕತ್ತು ನೋವು", "ta": "கழுத்து வலி"},
+#     "chest_pain": {"en": "chest pain", "hi": "सीने में दर्द", "te": "ఛాతి నొప్పి", "pa": "ਸੀਨੇ ਵਿੱਚ ਦਰਦ", "kn": "ಛಾತಿ ನೋವು", "ta": "மார்பு வலி"},
+#     "breathlessness": {"en": "breathlessness", "hi": "सांस लेने में तकलीफ", "te": "శ్వాస ఇబ్బంది", "pa": "ਸਾਹ ਲੈਣ ਵਿੱਚ ਦਿੱਕਤ", "kn": "ಉಸಿರಾಟದ ತೊಂದರೆ", "ta": "மூச்சுத்திணறல்"},
+#     "runny_nose": {"en": "runny nose", "hi": "नाक बहना", "te": "ముక్కు కారడం", "pa": "ਨੱਕ ਵਗਣਾ", "kn": "ಮೂಗು ಹರಿಯುವುದು", "ta": "மூக்கு வடிதல்"},
+#     "congestion": {"en": "congestion", "hi": "नाक बंद", "te": "ముక్కు దిగబడటం", "pa": "ਨੱਕ ਬੰਦ", "kn": "ಮೂಗು ಮುಚ್ಚಿಕೊಳ್ಳುವುದು", "ta": "மூக்கு அடைப்பு"},
+#     "throat_irritation": {"en": "throat irritation", "hi": "गले में जलन", "te": "గొంతు రాపిడి", "pa": "ਗਲੇ ਵਿੱਚ ਜਲਣ", "kn": "ಗಂಟಲು ಕೆರಡು", "ta": "தொண்டை எரிச்சல்"},
+#     "sweating": {"en": "sweating", "hi": "पसीना", "te": "చెమటలు", "pa": "ਪਸੀਨਾ", "kn": "ಬೆವರು", "ta": "வியர்வை"},
+#     "weight_loss": {"en": "weight loss", "hi": "वजन कम होना", "te": "బరువు తగ్గడం", "pa": "ਵਜ਼ਨ ਘਟਣਾ", "kn": "ತೂಕ ಇಳಿಯುವುದು", "ta": "எடை குறைவு"},
+#     "loss_of_appetite": {"en": "loss of appetite", "hi": "भूख कम लगना", "te": "ఆకలి తగ్గడం", "pa": "ਭੁੱਖ ਘੱਟ ਲੱਗਣਾ", "kn": "ಭುಕ್ಕಿ ಕಡಿಮೆ", "ta": "பசியின்மை"},
+#     "abdominal_pain": {"en": "abdominal pain", "hi": "पेट दर्द", "te": "కడుపు నొప్పి", "pa": "ਪੇਟ ਦਰਦ", "kn": "ಹೊಟ್ಟೆ ನೋವು", "ta": "வயிற்று வலி"},
+#     "joint_pain": {"en": "joint pain", "hi": "जोड़ों में दर्द", "te": "సంధుల నొప్పి", "pa": "ਜੋੜ ਦਰਦ", "kn": "ಸಂಧಿ ನೋವು", "ta": "மூட்டு வலி"},
+#     "muscle_pain": {"en": "muscle pain", "hi": "मांसपेशियों में दर्द", "te": "కండరాల నొప్పి", "pa": "ਮਾਸਪੇਸ਼ੀ ਦਰਦ", "kn": "ಸ್ನಾಯು ನೋವು", "ta": "தசை வலி"},
+#     "chills": {"en": "chills", "hi": "कंपकंपी", "te": "చలి", "pa": "ਠੰਢ ਲੱਗਣਾ", "kn": "ಚಳಿ ಹಿಡಿಯುವುದು", "ta": "சளிச்சல்"},
+#     "insomnia": {"en": "insomnia", "hi": "अनिद्रा", "te": "నిద్రలేమి", "pa": "ਅਨੀਂਦਰਾ", "kn": "ನಿದ್ರಾಹೀನತೆ", "ta": "தூக்கமின்மை"},
+#     "weakness_of_one_body_side": {"en": "weakness of one body side", "hi": "शरीर के एक तरफ कमजोरी", "te": "ఒకవైపు బలహీనత", "pa": "ਸ਼ਰੀਰ ਦੇ ਇੱਕ ਪਾਸੇ ਕਮਜ਼ੋਰੀ", "kn": "ದೇಹದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ", "ta": "உடலின் ஒரு பக்க பலவீனம்"},
+# }
+
+# SEVERITY_LABELS = {
+#     "en": {"Low": "Low", "Medium": "Medium", "High": "High"},
+#     "hi": {"Low": "कम", "Medium": "मध्यम", "High": "उच्च"},
+#     "te": {"Low": "తక్కువ", "Medium": "మధ్యస్థ", "High": "అధికం"},
+#     "pa": {"Low": "ਘੱਟ", "Medium": "ਦਰਮਿਆਨਾ", "High": "ਉੱਚ"},
+#     "kn": {"Low": "ಕಡಿಮೆ", "Medium": "ಮಧ್ಯಮ", "High": "ಹೆಚ್ಚು"},
+#     "ta": {"Low": "குறைவு", "Medium": "மிதமான", "High": "அதிகம்"},
+# }
+
+# STATIC_TEXT = {
+#     "en": {"no_symptoms": "No symptoms detected.", "no_match": "No matching disease found. Please add more symptoms.", "multiple": "Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.", "you_may_have": "You may have", "severity": "Severity", "low_msg": "Home care and rest may help.", "medium_msg": "Monitor symptoms and consult a doctor if they worsen.", "high_msg": "Consult a doctor.", "emergency": "Seek immediate medical attention!"},
+#     "hi": {"no_symptoms": "कोई लक्षण नहीं मिले।", "no_match": "कोई मिलती-जुलती बीमारी नहीं मिली। कृपया और लक्षण जोड़ें।", "multiple": "आपके लक्षण कई बीमारियों से मेल खाते हैं। कृपया अधिक सटीक परिणाम के लिए और लक्षण जोड़ें।", "you_may_have": "आपको", "severity": "गंभीरता", "low_msg": "घर पर आराम और देखभाल मदद कर सकती है।", "medium_msg": "लक्षणों पर नज़र रखें और बढ़ने पर डॉक्टर से सलाह लें।", "high_msg": "एक डॉक्टर से परामर्श करें।", "emergency": "तुरंत चिकित्सकीय सहायता लें!"},
+#     "te": {"no_symptoms": "ఎలాంటి లక్షణాలు గుర్తించబడలేదు.", "no_match": "సరిపోయే వ్యాధి కనిపించలేదు. దయచేసి మరిన్ని లక్షణాలు ఇవ్వండి.", "multiple": "మీ లక్షణాలు అనేక వ్యాధులతో సరిపోతున్నాయి. ఖచ్చితమైన ఫలితాల కోసం మరిన్ని లక్షణాలు ఇవ్వండి.", "you_may_have": "మీకు", "severity": "తీవ్రత", "low_msg": "ఇంటివద్ద విశ్రాంతి మరియు జాగ్రత్తలు ఉపయోగపడవచ్చు.", "medium_msg": "లక్షణాలను గమనించండి. ఎక్కువైతే వైద్యుడిని సంప్రదించండి.", "high_msg": "వైద్యుడిని సంప్రదించండి.", "emergency": "వెంటనే వైద్య సహాయం పొందండి!"},
+#     "pa": {"no_symptoms": "ਕੋਈ ਲੱਛਣ ਨਹੀਂ ਮਿਲੇ।", "no_match": "ਕੋਈ ਮਿਲਦੀ ਬਿਮਾਰੀ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।", "multiple": "ਤੁਹਾਡੇ ਲੱਛਣ ਕਈ ਬਿਮਾਰੀਆਂ ਨਾਲ ਮਿਲਦੇ ਹਨ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।", "you_may_have": "ਤੁਹਾਨੂੰ", "severity": "ਤੀਬਰਤਾ", "low_msg": "ਘਰ ਵਿੱਚ ਆਰਾਮ ਅਤੇ ਦੇਖਭਾਲ ਮਦਦ ਕਰ ਸਕਦੀ ਹੈ।", "medium_msg": "ਲੱਛਣਾਂ 'ਤੇ ਨਜ਼ਰ ਰੱਖੋ ਅਤੇ ਵੱਧਣ 'ਤੇ ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।", "high_msg": "ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।", "emergency": "ਤੁਰੰਤ ਡਾਕਟਰੀ ਮਦਦ ਲਵੋ!"},
+#     "kn": {"no_symptoms": "ಯಾವ ಲಕ್ಷಣಗಳೂ ಕಂಡುಬಂದಿಲ್ಲ.", "no_match": "ಹೊಂದುವ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ. ದಯವಿಟ್ಟು ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ಸೇರಿಸಿ.", "multiple": "ನಿಮ್ಮ ಲಕ್ಷಣಗಳು ಹಲವಾರು ರೋಗಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುತ್ತಿವೆ. ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ನೀಡಿ.", "you_may_have": "ನಿಮಗೆ", "severity": "ತೀವ್ರತೆ", "low_msg": "ಮನೆ ವಿಶ್ರಾಂತಿ ಮತ್ತು ಜಾಗ್ರತೆ ಸಹಾಯವಾಗಬಹುದು.", "medium_msg": "ಲಕ್ಷಣಗಳನ್ನು ಗಮನಿಸಿ. ಹೆಚ್ಚಾದರೆ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.", "high_msg": "ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.", "emergency": "ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ!"},
+#     "ta": {"no_symptoms": "எந்த அறிகுறிகளும் கண்டறியப்படவில்லை.", "no_match": "பொருந்தும் நோய் எதுவும் கிடைக்கவில்லை. மேலும் அறிகுறிகள் அளிக்கவும்.", "multiple": "உங்கள் அறிகுறிகள் பல நோய்களுடன் பொருந்துகின்றன. மேலும் அறிகுறிகள் அளிக்கவும்.", "you_may_have": "உங்களுக்கு", "severity": "தீவிரம்", "low_msg": "வீட்டு ஓய்வு மற்றும் கவனம் உதவலாம்.", "medium_msg": "அறிகுறிகளை கவனியுங்கள். அதிகரித்தால் மருத்துவரை அணுகவும்.", "high_msg": "மருத்துவரை அணுகவும்.", "emergency": "உடனடி மருத்துவ உதவி பெறுங்கள்!"},
+# }
+
+# def t(lang: str, key: str) -> str:
+#     return STATIC_TEXT.get(lang, STATIC_TEXT["en"]).get(key, STATIC_TEXT["en"][key])
+
+# def cached_translate(text: str, lang: str) -> str:
+#     if not text or lang == "en":
+#         return text
+#     key = (text, lang)
+#     if key in TRANSLATION_CACHE:
+#         return TRANSLATION_CACHE[key]
+#     try:
+#         translated = translate_from_english(text, lang)
+#         TRANSLATION_CACHE[key] = translated if translated else text
+#     except Exception:
+#         TRANSLATION_CACHE[key] = text
+#     return TRANSLATION_CACHE[key]
+
+# def translate_many(texts: List[str], lang: str) -> List[str]:
+#     if lang == "en":
+#         return texts
+#     unique = []
+#     seen = set()
+#     for x in texts:
+#         if x not in seen:
+#             seen.add(x)
+#             unique.append(x)
+#     with ThreadPoolExecutor(max_workers=min(MAX_TRANSLATION_WORKERS, max(1, len(unique)))) as ex:
+#         translated_unique = list(ex.map(lambda x: cached_translate(x, lang), unique))
+#     mapping = dict(zip(unique, translated_unique))
+#     return [mapping.get(x, x) for x in texts]
+
+# def localize_symptom(symptom_key: str, lang: str) -> str:
+#     if lang == "en":
+#         return symptom_key
+#     if symptom_key in SYMPTOM_LABELS and lang in SYMPTOM_LABELS[symptom_key]:
+#         return SYMPTOM_LABELS[symptom_key][lang]
+#     return cached_translate(symptom_key.replace("_", " "), lang)
+
+# def localize_symptoms(symptoms: List[str], lang: str) -> List[str]:
+#     return [localize_symptom(s, lang) for s in symptoms]
+
+# def localize_severity(severity_en: str, lang: str) -> str:
+#     return SEVERITY_LABELS.get(lang, SEVERITY_LABELS["en"]).get(severity_en, severity_en)
+
+# def localize_disease_name(disease: str, lang: str) -> str:
+#     return disease if lang == "en" else cached_translate(disease, lang)
+
+# def localize_precautions(precautions: List[str], lang: str) -> List[str]:
+#     return translate_many(precautions, lang)
+
+# def build_summary(disease_name_en: str, severity_en: str, lang: str, emergency_flag: bool) -> str:
+#     sev = localize_severity(severity_en, lang)
+#     disease_local = localize_disease_name(disease_name_en, lang)
+#     msg = t(lang, "low_msg") if severity_en == "Low" else (t(lang, "medium_msg") if severity_en == "Medium" else t(lang, "high_msg"))
+#     summary = f"{t(lang, 'you_may_have')} {disease_local}. {t(lang, 'severity')}: {sev}. {msg}"
+#     if emergency_flag:
+#         summary += f" 🚨 {t(lang, 'emergency')}"
+#     return summary
+
+# def load_artifacts():
+#     global model_data, meta_data, disease_precautions, symptom_descriptions
+#     artifacts_dir = Path("artifacts")
+#     model_path = artifacts_dir / "model.joblib"
+#     meta_path = artifacts_dir / "meta.json"
+#     precautions_path = artifacts_dir / "disease_precaution_map.json"
+#     descriptions_path = artifacts_dir / "symptom_description.json"
+#     if model_path.exists():
+#         model_data = joblib.load(model_path)
+#         print(f"✓ Loaded model from {model_path}")
+#     else:
+#         print("⚠️ model.joblib not found, using rule-based predictor")
+#     if meta_path.exists():
+#         with open(meta_path, "r", encoding="utf-8") as f:
+#             meta_data = json.load(f)
+#     if precautions_path.exists():
+#         with open(precautions_path, "r", encoding="utf-8") as f:
+#             disease_precautions = json.load(f)
+#     if descriptions_path.exists():
+#         with open(descriptions_path, "r", encoding="utf-8") as f:
+#             symptom_descriptions = json.load(f)
+
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     load_artifacts()
+#     yield
+
+# app = FastAPI(title="Symptoms Checker API", description="AI-powered symptom analysis and disease prediction", version="4.0.0", lifespan=lifespan)
+# app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# def process_audio_input(audio_base64: str, language_code: str) -> str:
+#     try:
+#         audio_bytes = base64.b64decode(audio_base64)
+#         try:
+#             cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(language_code, "en-US")
+#             return speech_to_text_cloud(audio_bytes, cloud_lang_code).strip()
+#         except Exception:
+#             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+#                 temp_file.write(audio_bytes)
+#                 temp_path = temp_file.name
+#             try:
+#                 return speech_to_text_local(temp_path).strip()
+#             finally:
+#                 if os.path.exists(temp_path):
+#                     os.unlink(temp_path)
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
+
+# def ml_predict(symptoms: List[str]) -> List[Dict[str, Any]]:
+#     if not model_data or "model" not in model_data:
+#         return []
+#     try:
+#         model = model_data["model"]
+#         class_names = model_data.get("class_names") or model_data.get("diseases") or []
+#         feature_vector = build_feature_vector(symptoms, "artifacts").reshape(1, -1)
+#         if hasattr(model, "predict_proba"):
+#             probs = model.predict_proba(feature_vector)[0]
+#             results = []
+#             for disease, prob in zip(class_names, probs):
+#                 matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+#                 results.append({
+#                     "disease": disease,
+#                     "score": float(prob),
+#                     "matched": matched,
+#                     "match_count": len(matched),
+#                     "missing_count": len(set(symptoms) - disease_map.get(disease, set()))
+#                 })
+#             results.sort(key=lambda x: x["score"], reverse=True)
+#             return results
+#     except Exception:
+#         pass
+#     return []
+
+# def choose_predictions(symptoms: List[str], pred_results: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+#     if not pred_results:
+#         return [], "no_match"
+
+#     full_matches = [p for p in pred_results if p["missing_count"] == 0]
+
+#     if len(full_matches) == 1:
+#         return full_matches[:1], None
+
+#     if len(full_matches) > 1:
+#         full_matches.sort(key=lambda x: (x["score"], x["disease_coverage"]), reverse=True)
+#         if len(symptoms) <= 2:
+#             return [], "multiple"
+#         return full_matches[:3], None
+
+#     if len(symptoms) <= 2:
+#         return [], "multiple"
+
+#     if pred_results[0]["score"] <= 0:
+#         return [], "no_match"
+
+#     return pred_results[:3], None
+
+# def generate_tts_audio(display_text: str, lang: str) -> Optional[str]:
+#     try:
+#         cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(lang, "en-US")
+#         try:
+#             _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
+#         except Exception:
+#             _, audio_bytes, temp_path = text_to_speech_local(display_text, lang)
+#             if os.path.exists(temp_path):
+#                 os.unlink(temp_path)
+#         return base64.b64encode(audio_bytes).decode("utf-8")
+#     except Exception:
+#         return None
+
+# @app.get("/health")
+# async def health_check():
+#     return {"status": "healthy", "model_loaded": model_data is not None}
+
+# @app.post("/predict", response_model=PredictResponse)
+# async def predict(request: PredictRequest):
+#     try:
+#         if request.input_type not in ["text", "audio"]:
+#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
+#         if request.mode not in ["text", "voice"]:
+#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
+
+#         input_text_user_lang = process_audio_input(request.input, request.language) if request.input_type == "audio" else request.input
+#         if not input_text_user_lang.strip():
+#             raise HTTPException(status_code=400, detail="No text found in input")
+
+#         detected_lang = detect_language(input_text_user_lang)
+#         source_lang = request.language if request.language != "en" else detected_lang
+#         input_text = input_text_user_lang if source_lang == "en" else translate_to_english(input_text_user_lang, source_lang)
+
+#         symptoms = extract_symptoms(input_text)
+#         symptoms_translated = localize_symptoms(symptoms, request.language)
+
+#         if not symptoms:
+#             display_text = t(request.language, "no_symptoms")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=[],
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=[],
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang},
+#             )
+
+#         pred_results = predict_disease(symptoms, disease_map)
+#         ml_results = ml_predict(symptoms)
+#         selected, reason = choose_predictions(symptoms, pred_results)
+
+#         if reason == "no_match":
+#             display_text = t(request.language, "no_match")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms if request.language == "en" else symptoms_translated,
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=symptoms_translated if request.language != "en" else None,
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang, "rule_top": pred_results[:5], "ml_top": ml_results[:5]},
+#             )
+
+#         if reason == "multiple":
+#             display_text = t(request.language, "multiple")
+#             tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+#             return PredictResponse(
+#                 input_text=input_text,
+#                 input_text_user_lang=input_text_user_lang,
+#                 symptoms=symptoms if request.language == "en" else symptoms_translated,
+#                 predictions=[],
+#                 predictions_translated=[],
+#                 symptoms_translated=symptoms_translated if request.language != "en" else None,
+#                 language=request.language,
+#                 display_text=display_text,
+#                 tts_audio_base64=tts_audio,
+#                 debug={"detected_lang": detected_lang, "rule_top": pred_results[:5], "ml_top": ml_results[:5]},
+#             )
+
+#         emergency_flag = is_emergency(symptoms)
+#         disease_predictions = []
+#         predictions_translated = []
+
+#         for item in selected:
+#             disease = item["disease"]
+#             matched = item.get("matched", [])
+#             precautions = disease_precautions.get(disease, [])
+#             severity_en = calculate_severity(matched, severity_dict)
+#             if emergency_flag and severity_en != "High":
+#                 severity_en = "High"
+
+#             english_pred = DiseasePrediction(
+#                 disease=disease,
+#                 prob=float(item["score"]),
+#                 severity=severity_en,
+#                 precautions=precautions,
+#                 symptom_descriptions={s: symptom_descriptions.get(s, "") for s in matched},
+#             )
+#             disease_predictions.append(english_pred)
+
+#             translated_pred = DiseasePrediction(
+#                 disease=localize_disease_name(disease, request.language),
+#                 prob=float(item["score"]),
+#                 severity=localize_severity(severity_en, request.language),
+#                 precautions=localize_precautions(precautions, request.language),
+#                 symptom_descriptions={localize_symptom(k, request.language): cached_translate(v, request.language) if v else "" for k, v in english_pred.symptom_descriptions.items()},
+#             )
+#             predictions_translated.append(translated_pred)
+
+#         top_prediction = disease_predictions[0]
+#         display_text = build_summary(top_prediction.disease, top_prediction.severity, request.language, emergency_flag)
+#         tts_audio_base64 = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+
+#         return PredictResponse(
+#             input_text=input_text,
+#             input_text_user_lang=input_text_user_lang,
+#             symptoms=symptoms if request.language == "en" else symptoms_translated,
+#             predictions=disease_predictions,
+#             predictions_translated=predictions_translated if request.language != "en" else None,
+#             symptoms_translated=symptoms_translated if request.language != "en" else None,
+#             language=request.language,
+#             display_text=display_text,
+#             tts_audio_base64=tts_audio_base64,
+#             debug={
+#                 "detected_lang": detected_lang,
+#                 "used_rule_based_primary": True,
+#                 "rule_top": pred_results[:5],
+#                 "ml_top": ml_results[:5],
+#             },
+#         )
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"Prediction error: {e}")
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# def find_available_port(start_port=8000, max_port=8010):
+#     import socket
+#     for port in range(start_port, max_port + 1):
+#         try:
+#             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#                 s.bind(("0.0.0.0", port))
+#                 return port
+#         except OSError:
+#             continue
+#     raise RuntimeError(f"No available port found between {start_port} and {max_port}")
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     port = find_available_port()
+#     print(f"⚡ API running on http://localhost:{port}")
+#     print(f"📚 API Documentation: http://localhost:{port}/docs")
+#     print(f"❤️ Health Check: http://localhost:{port}/health")
+#     print("=" * 50)
+#     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 import base64
 import json
-import joblib
-import numpy as np
+import os
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
+from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
+
+import joblib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# Import our custom modules
 from translator import translate_to_english, translate_from_english, detect_language
 from symptom_extractor import extract_symptoms
 from feature_engineer import build_feature_vector
 from stt_tts import speech_to_text_cloud, speech_to_text_local, text_to_speech_cloud, text_to_speech_local
-from disease_matcher import DiseaseMatcher
-
 from severity import load_severity, calculate_severity
 from predictor import load_disease_map, predict_disease
 from emergency import is_emergency
 
-# Configuration flags
-USE_SCORER_ONLY = False  # Set to True to use only rule-based scoring, False for ensemble
+from database import users_collection
+from passlib.context import CryptContext
 
-# Pydantic models for request/response
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 class PredictRequest(BaseModel):
-    input: str = Field(..., description="User text or base64-encoded audio data")
-    input_type: str = Field(..., description="Type of input: 'text' or 'audio'")
-    language: str = Field(..., description="Language code: 'en', 'hi', or 'pa'")
-    mode: str = Field(..., description="Output mode: 'text' or 'voice'")
+    input: str = Field(...)
+    input_type: str = Field(...)
+    language: str = Field(...)
+    mode: str = Field(...) 
 
 
 class DiseasePrediction(BaseModel):
@@ -68,706 +2040,432 @@ class PredictResponse(BaseModel):
     symptoms: List[str]
     predictions: List[DiseasePrediction]
     predictions_translated: Optional[List[DiseasePrediction]] = None
+    symptoms_translated: Optional[List[str]] = None
     language: str
     display_text: str
     tts_audio_base64: Optional[str] = None
     debug: Optional[Dict[str, Any]] = None
 
 
-# Global variables for loaded artifacts
-model_data = None
-meta_data = None
-symptom_severity = None
-disease_precautions = None
-symptom_descriptions = None
-disease_matcher = None
-#NEW FIELD
 severity_dict = load_severity()
 disease_map = load_disease_map()
 
-def load_artifacts():
-    """
-    Load all required artifacts on startup.
-    """
-    global model_data, meta_data, symptom_severity, disease_precautions, symptom_descriptions, disease_matcher
-    
-    artifacts_dir = Path("artifacts")
-    
+model_data = None
+meta_data = None
+disease_precautions = {}
+symptom_descriptions = {}
+
+TRANSLATION_CACHE: Dict[Tuple[str, str], str] = {}
+MAX_TRANSLATION_WORKERS = 8
+
+SYMPTOM_LABELS = {
+    "headache": {"en": "headache", "hi": "सिरदर्द", "te": "తలనొప్పి", "pa": "ਸਿਰ ਦਰਦ", "kn": "ತಲೆನೋವು", "ta": "தலைவலி"},
+    "high_fever": {"en": "high fever", "hi": "तेज बुखार", "te": "అధిక జ్వరం", "pa": "ਤੇਜ਼ ਬੁਖਾਰ", "kn": "ತೀವ್ರ ಜ್ವರ", "ta": "அதிக காய்ச்சல்"},
+    "mild_fever": {"en": "mild fever", "hi": "हल्का बुखार", "te": "తేలికపాటి జ్వరం", "pa": "ਹਲਕਾ ਬੁਖਾਰ", "kn": "ಸ್ವಲ್ಪ ಜ್ವರ", "ta": "லேசான காய்ச்சல்"},
+    "vomiting": {"en": "vomiting", "hi": "उल्टी", "te": "వాంతులు", "pa": "ਉਲਟੀ", "kn": "ವಾಂತಿ", "ta": "வாந்தி"},
+    "nausea": {"en": "nausea", "hi": "मतली", "te": "వికారం", "pa": "ਮਤਲੀ", "kn": "ಛರ್ಡಿ ಭಾವನೆ", "ta": "குமட்டல்"},
+    "cough": {"en": "cough", "hi": "खांसी", "te": "దగ్గు", "pa": "ਖੰਘ", "kn": "ಕೆಮ್ಮು", "ta": "இருமல்"},
+    "dizziness": {"en": "dizziness", "hi": "चक्कर", "te": "తల తిరగడం", "pa": "ਚੱਕਰ", "kn": "ತಲೆ ಸುತ್ತು", "ta": "தலைசுற்றல்"},
+    "skin_rash": {"en": "skin rash", "hi": "त्वचा पर चकत्ते", "te": "చర్మ దద్దుర్లు", "pa": "ਚਮੜੀ ਦੇ ਦਾਣੇ", "kn": "ಚರ್ಮದ ಉರಿ", "ta": "சருமச் சிரங்கு"},
+    "itching": {"en": "itching", "hi": "खुजली", "te": "దురద", "pa": "ਖੁਜਲੀ", "kn": "ಖಜ್ಜಳಿ", "ta": "அரிப்பு"},
+    "fatigue": {"en": "fatigue", "hi": "थकान", "te": "అలసట", "pa": "ਥਕਾਵਟ", "kn": "ದಣಿವು", "ta": "சோர்வு"},
+    "back_pain": {"en": "back pain", "hi": "पीठ दर्द", "te": "నడుం నొప్పి", "pa": "ਪੀਠ ਦਰਦ", "kn": "ಬೆನ್ನು ನೋವು", "ta": "முதுகு வலி"},
+    "neck_pain": {"en": "neck pain", "hi": "गर्दन दर्द", "te": "మెడ నొప్పి", "pa": "ਗਰਦਨ ਦਰਦ", "kn": "ಕತ್ತು ನೋವು", "ta": "கழுத்து வலி"},
+    "chest_pain": {"en": "chest pain", "hi": "सीने में दर्द", "te": "ఛాతి నొప్పి", "pa": "ਸੀਨੇ ਵਿੱਚ ਦਰਦ", "kn": "ಛಾತಿ ನೋವು", "ta": "மார்பு வலி"},
+    "breathlessness": {"en": "breathlessness", "hi": "सांस लेने में तकलीफ", "te": "శ్వాస ఇబ్బంది", "pa": "ਸਾਹ ਲੈਣ ਵਿੱਚ ਦਿੱਕਤ", "kn": "ಉಸಿರಾಟದ ತೊಂದರೆ", "ta": "மூச்சுத்திணறல்"},
+    "runny_nose": {"en": "runny nose", "hi": "नाक बहना", "te": "ముక్కు కారడం", "pa": "ਨੱਕ ਵਗਣਾ", "kn": "ಮೂಗು ಹರಿಯುವುದು", "ta": "மூக்கு வடிதல்"},
+    "congestion": {"en": "congestion", "hi": "नाक बंद", "te": "ముక్కు దిగబడటం", "pa": "ਨੱਕ ਬੰਦ", "kn": "ಮೂಗು ಮುಚ್ಚಿಕೊಳ್ಳುವುದು", "ta": "மூக்கு அடைப்பு"},
+    "throat_irritation": {"en": "throat irritation", "hi": "गले में जलन", "te": "గొంతు రాపిడి", "pa": "ਗਲੇ ਵਿੱਚ ਜਲਣ", "kn": "ಗಂಟಲು ಕೆರಡು", "ta": "தொண்டை எரிச்சல்"},
+    "sweating": {"en": "sweating", "hi": "पसीना", "te": "చెమటలు", "pa": "ਪਸੀਨਾ", "kn": "ಬೆವರು", "ta": "வியர்வை"},
+    "weight_loss": {"en": "weight loss", "hi": "वजन कम होना", "te": "బరువు తగ్గడం", "pa": "ਵਜ਼ਨ ਘਟਣਾ", "kn": "ತೂಕ ಇಳಿಯುವುದು", "ta": "எடை குறைவு"},
+    "loss_of_appetite": {"en": "loss of appetite", "hi": "भूख कम लगना", "te": "ఆకలి తగ్గడం", "pa": "ਭੁੱਖ ਘੱਟ ਲੱਗਣਾ", "kn": "ಭುಕ್ಕಿ ಕಡಿಮೆ", "ta": "பசியின்மை"},
+    "abdominal_pain": {"en": "abdominal pain", "hi": "पेट दर्द", "te": "కడుపు నొప్పి", "pa": "ਪੇਟ ਦਰਦ", "kn": "ಹೊಟ್ಟೆ ನೋವು", "ta": "வயிற்று வலி"},
+    "joint_pain": {"en": "joint pain", "hi": "जोड़ों में दर्द", "te": "సంధుల నొప్పి", "pa": "ਜੋੜ ਦਰਦ", "kn": "ಸಂಧಿ ನೋವು", "ta": "மூட்டு வலி"},
+    "muscle_pain": {"en": "muscle pain", "hi": "मांसपेशियों में दर्द", "te": "కండరాల నొప్పి", "pa": "ਮਾਸਪੇਸ਼ੀ ਦਰਦ", "kn": "ಸ್ನಾಯು ನೋವು", "ta": "தசை வலி"},
+    "chills": {"en": "chills", "hi": "कंपकंपी", "te": "చలి", "pa": "ਠੰਢ ਲੱਗਣਾ", "kn": "ಚಳಿ ಹಿಡಿಯುವುದು", "ta": "சளிச்சல்"},
+    "insomnia": {"en": "insomnia", "hi": "अनिद्रा", "te": "నిద్రలేమి", "pa": "ਅਨੀਂਦਰਾ", "kn": "ನಿದ್ರಾಹೀನತೆ", "ta": "தூக்கமின்மை"},
+    "weakness_of_one_body_side": {"en": "weakness of one body side", "hi": "शरीर के एक तरफ कमजोरी", "te": "ఒకవైపు బలహీనత", "pa": "ਸ਼ਰੀਰ ਦੇ ਇੱਕ ਪਾਸੇ ਕਮਜ਼ੋਰੀ", "kn": "ದೇಹದ ಒಂದು ಬದಿಯಲ್ಲಿ ದುರ್ಬಲತೆ", "ta": "உடலின் ஒரு பக்க பலவீனம்"},
+}
+
+SEVERITY_LABELS = {
+    "en": {"Low": "Low", "Medium": "Medium", "High": "High"},
+    "hi": {"Low": "कम", "Medium": "मध्यम", "High": "उच्च"},
+    "te": {"Low": "తక్కువ", "Medium": "మధ్యస్థ", "High": "అధికం"},
+    "pa": {"Low": "ਘੱਟ", "Medium": "ਦਰਮਿਆਨਾ", "High": "ਉੱਚ"},
+    "kn": {"Low": "ಕಡಿಮೆ", "Medium": "ಮಧ್ಯಮ", "High": "ಹೆಚ್ಚು"},
+    "ta": {"Low": "குறைவு", "Medium": "மிதமான", "High": "அதிகம்"},
+}
+
+STATIC_TEXT = {
+    "en": {"no_symptoms": "No symptoms detected.", "no_match": "No matching disease found. Please add more symptoms.", "multiple": "Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.", "you_may_have": "You may have", "severity": "Severity", "low_msg": "Home care and rest may help.", "medium_msg": "Monitor symptoms and consult a doctor if they worsen.", "high_msg": "Consult a doctor.", "emergency": "Seek immediate medical attention!"},
+    "hi": {"no_symptoms": "कोई लक्षण नहीं मिले।", "no_match": "कोई मिलती-जुलती बीमारी नहीं मिली। कृपया और लक्षण जोड़ें।", "multiple": "आपके लक्षण कई बीमारियों से मेल खाते हैं। कृपया अधिक सटीक परिणाम के लिए और लक्षण जोड़ें।", "you_may_have": "आपको", "severity": "गंभीरता", "low_msg": "घर पर आराम और देखभाल मदद कर सकती है।", "medium_msg": "लक्षणों पर नज़र रखें और बढ़ने पर डॉक्टर से सलाह लें।", "high_msg": "एक डॉक्टर से परामर्श करें।", "emergency": "तुरंत चिकित्सकीय सहायता लें!"},
+    "te": {"no_symptoms": "ఎలాంటి లక్షణాలు గుర్తించబడలేదు.", "no_match": "సరిపోయే వ్యాధి కనిపించలేదు. దయచేసి మరిన్ని లక్షణాలు ఇవ్వండి.", "multiple": "మీ లక్షణాలు అనేక వ్యాధులతో సరిపోతున్నాయి. ఖచ్చితమైన ఫలితాల కోసం మరిన్ని లక్షణాలు ఇవ్వండి.", "you_may_have": "మీకు", "severity": "తీవ్రత", "low_msg": "ఇంటివద్ద విశ్రాంతి మరియు జాగ్రత్తలు ఉపయోగపడవచ్చు.", "medium_msg": "లక్షణాలను గమనించండి. ఎక్కువైతే వైద్యుడిని సంప్రదించండి.", "high_msg": "వైద్యుడిని సంప్రదించండి.", "emergency": "వెంటనే వైద్య సహాయం పొందండి!"},
+    "pa": {"no_symptoms": "ਕੋਈ ਲੱਛਣ ਨਹੀਂ ਮਿਲੇ।", "no_match": "ਕੋਈ ਮਿਲਦੀ ਬਿਮਾਰੀ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।", "multiple": "ਤੁਹਾਡੇ ਲੱਛਣ ਕਈ ਬਿਮਾਰੀਆਂ ਨਾਲ ਮਿਲਦੇ ਹਨ। ਕਿਰਪਾ ਕਰਕੇ ਹੋਰ ਲੱਛਣ ਦਿਓ।", "you_may_have": "ਤੁਹਾਨੂੰ", "severity": "ਤੀਬਰਤਾ", "low_msg": "ਘਰ ਵਿੱਚ ਆਰਾਮ ਅਤੇ ਦੇਖਭਾਲ ਮਦਦ ਕਰ ਸਕਦੀ ਹੈ।", "medium_msg": "ਲੱਛਣਾਂ 'ਤੇ ਨਜ਼ਰ ਰੱਖੋ ਅਤੇ ਵੱਧਣ 'ਤੇ ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।", "high_msg": "ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰੋ।", "emergency": "ਤੁਰੰਤ ਡਾਕਟਰੀ ਮਦਦ ਲਵੋ!"},
+    "kn": {"no_symptoms": "ಯಾವ ಲಕ್ಷಣಗಳೂ ಕಂಡುಬಂದಿಲ್ಲ.", "no_match": "ಹೊಂದುವ ರೋಗ ಕಂಡುಬಂದಿಲ್ಲ. ದಯವಿಟ್ಟು ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ಸೇರಿಸಿ.", "multiple": "ನಿಮ್ಮ ಲಕ್ಷಣಗಳು ಹಲವಾರು ರೋಗಗಳಿಗೆ ಹೊಂದಿಕೆಯಾಗುತ್ತಿವೆ. ಇನ್ನಷ್ಟು ಲಕ್ಷಣಗಳನ್ನು ನೀಡಿ.", "you_may_have": "ನಿಮಗೆ", "severity": "ತೀವ್ರತೆ", "low_msg": "ಮನೆ ವಿಶ್ರಾಂತಿ ಮತ್ತು ಜಾಗ್ರತೆ ಸಹಾಯವಾಗಬಹುದು.", "medium_msg": "ಲಕ್ಷಣಗಳನ್ನು ಗಮನಿಸಿ. ಹೆಚ್ಚಾದರೆ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.", "high_msg": "ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.", "emergency": "ತಕ್ಷಣ ವೈದ್ಯಕೀಯ ಸಹಾಯ ಪಡೆಯಿರಿ!"},
+    "ta": {"no_symptoms": "எந்த அறிகுறிகளும் கண்டறியப்படவில்லை.", "no_match": "பொருந்தும் நோய் எதுவும் கிடைக்கவில்லை. மேலும் அறிகுறிகள் அளிக்கவும்.", "multiple": "உங்கள் அறிகுறிகள் பல நோய்களுடன் பொருந்துகின்றன. மேலும் அறிகுறிகள் அளிக்கவும்.", "you_may_have": "உங்களுக்கு", "severity": "தீவிரம்", "low_msg": "வீட்டு ஓய்வு மற்றும் கவனம் உதவலாம்.", "medium_msg": "அறிகுறிகளை கவனியுங்கள். அதிகரித்தால் மருத்துவரை அணுகவும்.", "high_msg": "மருத்துவரை அணுகவும்.", "emergency": "உடனடி மருத்துவ உதவி பெறுங்கள்!"},
+}
+
+def t(lang: str, key: str) -> str:
+    return STATIC_TEXT.get(lang, STATIC_TEXT["en"]).get(key, STATIC_TEXT["en"][key])
+
+def cached_translate(text: str, lang: str) -> str:
+    if not text or lang == "en":
+        return text
+    key = (text, lang)
+    if key in TRANSLATION_CACHE:
+        return TRANSLATION_CACHE[key]
     try:
-        # Load trained model
-        model_path = artifacts_dir / "model.joblib"
-        if not model_path.exists():
-            raise FileNotFoundError(f"Model not found: {model_path}")
+        translated = translate_from_english(text, lang)
+        TRANSLATION_CACHE[key] = translated if translated else text
+    except Exception:
+        TRANSLATION_CACHE[key] = text
+    return TRANSLATION_CACHE[key]
+
+def translate_many(texts: List[str], lang: str) -> List[str]:
+    if lang == "en":
+        return texts
+    unique = []
+    seen = set()
+    for x in texts:
+        if x not in seen:
+            seen.add(x)
+            unique.append(x)
+    with ThreadPoolExecutor(max_workers=min(MAX_TRANSLATION_WORKERS, max(1, len(unique)))) as ex:
+        translated_unique = list(ex.map(lambda x: cached_translate(x, lang), unique))
+    mapping = dict(zip(unique, translated_unique))
+    return [mapping.get(x, x) for x in texts]
+
+def localize_symptom(symptom_key: str, lang: str) -> str:
+    if lang == "en":
+        return symptom_key
+    if symptom_key in SYMPTOM_LABELS and lang in SYMPTOM_LABELS[symptom_key]:
+        return SYMPTOM_LABELS[symptom_key][lang]
+    return cached_translate(symptom_key.replace("_", " "), lang)
+
+def localize_symptoms(symptoms: List[str], lang: str) -> List[str]:
+    return [localize_symptom(s, lang) for s in symptoms]
+
+def localize_severity(severity_en: str, lang: str) -> str:
+    return SEVERITY_LABELS.get(lang, SEVERITY_LABELS["en"]).get(severity_en, severity_en)
+
+def localize_disease_name(disease: str, lang: str) -> str:
+    return disease if lang == "en" else cached_translate(disease, lang)
+
+def localize_precautions(precautions: List[str], lang: str) -> List[str]:
+    return translate_many(precautions, lang)
+
+def build_summary(disease_name_en: str, severity_en: str, lang: str, emergency_flag: bool) -> str:
+    sev = localize_severity(severity_en, lang)
+    disease_local = localize_disease_name(disease_name_en, lang)
+    msg = t(lang, "low_msg") if severity_en == "Low" else (t(lang, "medium_msg") if severity_en == "Medium" else t(lang, "high_msg"))
+    summary = f"{t(lang, 'you_may_have')} {disease_local}. {t(lang, 'severity')}: {sev}. {msg}"
+    if emergency_flag:
+        summary += f" 🚨 {t(lang, 'emergency')}"
+    return summary
+
+def load_artifacts():
+    global model_data, meta_data, disease_precautions, symptom_descriptions
+    artifacts_dir = Path("artifacts")
+    model_path = artifacts_dir / "model.joblib"
+    meta_path = artifacts_dir / "meta.json"
+    precautions_path = artifacts_dir / "disease_precaution_map.json"
+    descriptions_path = artifacts_dir / "symptom_description.json"
+    if model_path.exists():
         model_data = joblib.load(model_path)
         print(f"✓ Loaded model from {model_path}")
-        
-        # Load metadata
-        meta_path = artifacts_dir / "meta.json"
-        if not meta_path.exists():
-            raise FileNotFoundError(f"Meta data not found: {meta_path}")
-        with open(meta_path, 'r', encoding='utf-8') as f:
+    else:
+        print("⚠️ model.joblib not found, using rule-based predictor")
+    if meta_path.exists():
+        with open(meta_path, "r", encoding="utf-8") as f:
             meta_data = json.load(f)
-        print(f"✓ Loaded metadata from {meta_path}")
-        
-        # Load symptom severity mapping
-        severity_path = artifacts_dir / "symptom_severity.json"
-        if not severity_path.exists():
-            raise FileNotFoundError(f"Symptom severity not found: {severity_path}")
-        with open(severity_path, 'r', encoding='utf-8') as f:
-            symptom_severity = json.load(f)
-        print(f"✓ Loaded symptom severity from {severity_path}")
-        
-        # Load disease precautions mapping
-        precautions_path = artifacts_dir / "disease_precaution_map.json"
-        if not precautions_path.exists():
-            raise FileNotFoundError(f"Disease precautions not found: {precautions_path}")
-        with open(precautions_path, 'r', encoding='utf-8') as f:
+    if precautions_path.exists():
+        with open(precautions_path, "r", encoding="utf-8") as f:
             disease_precautions = json.load(f)
-        print(f"✓ Loaded disease precautions from {precautions_path}")
-        
-        # Load symptom descriptions
-        descriptions_path = artifacts_dir / "symptom_description.json"
-        if not descriptions_path.exists():
-            print(f"⚠️ Symptom descriptions not found: {descriptions_path}")
-            symptom_descriptions = {}
-        else:
-            with open(descriptions_path, 'r', encoding='utf-8') as f:
-                symptom_descriptions = json.load(f)
-            print(f"✓ Loaded symptom descriptions from {descriptions_path}")
-        
-        # Initialize disease matcher
-        try:
-            disease_matcher = DiseaseMatcher(str(artifacts_dir))
-            print(f"✓ Disease matcher initialized successfully")
-        except Exception as e:
-            print(f"⚠️ Disease matcher initialization failed: {e}")
-            disease_matcher = None
-        
-        print(f"✓ All artifacts loaded successfully")
-        
-    except Exception as e:
-        print(f"❌ Error loading artifacts: {e}")
-        raise
+    if descriptions_path.exists():
+        with open(descriptions_path, "r", encoding="utf-8") as f:
+            symptom_descriptions = json.load(f)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_artifacts()
+    yield
+
+app = FastAPI(title="Symptoms Checker API", description="AI-powered symptom analysis and disease prediction", version="4.0.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 def process_audio_input(audio_base64: str, language_code: str) -> str:
-    """
-    Process audio input and return transcribed text.
-    
-    Args:
-        audio_base64: Base64-encoded audio data
-        language_code: Language code for transcription
-        
-    Returns:
-        Transcribed text in English
-    """
     try:
-        # Decode base64 audio
         audio_bytes = base64.b64decode(audio_base64)
-        
-        # Try cloud STT first, fallback to local
         try:
-            # Convert language code for Google Cloud (e.g., 'hi' -> 'hi-IN')
-            cloud_lang_code = f"{language_code}-IN" if language_code in ['hi', 'pa'] else f"{language_code}-US"
-            transcribed_text = speech_to_text_cloud(audio_bytes, cloud_lang_code)
+            cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(language_code, "en-US")
+            return speech_to_text_cloud(audio_bytes, cloud_lang_code).strip()
         except Exception:
-            # Fallback to local STT (requires saving to temp file)
-            import tempfile
-            import os
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
                 temp_file.write(audio_bytes)
-                temp_file_path = temp_file.name
-            
+                temp_path = temp_file.name
             try:
-                transcribed_text = speech_to_text_local(temp_file_path)
+                return speech_to_text_local(temp_path).strip()
             finally:
-                # Clean up temp file
-                if os.path.exists(temp_file_path):
-                    os.unlink(temp_file_path)
-        
-        return transcribed_text.strip()
-        
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
 
-
-def calculate_disease_severity(symptoms: List[str], disease: str) -> str:
-    """
-    Calculate disease severity based on symptom weights.
-    
-    Args:
-        symptoms: List of symptoms for the disease
-        disease: Disease name
-        
-    Returns:
-        Severity label: 'Low', 'Medium', 'High', or 'Critical'
-    """
-    if not symptoms or not symptom_severity:
-        return "Low"
-    
-    # Get weights for symptoms
-    weights = []
-    for symptom in symptoms:
-        if symptom in symptom_severity:
-            weights.append(symptom_severity[symptom])
-    
-    if not weights:
-        return "Low"
-    
-    # Use max aggregation (most severe symptom determines overall severity)
-    max_weight = max(weights)
-    
-    # Map to severity labels using thresholds from meta.json
-    severity_thresholds = meta_data.get('severity_thresholds', {
-        'low': 0.0,
-        'medium': 0.3,
-        'high': 0.6,
-        'critical': 0.8
-    })
-    
-    if max_weight >= severity_thresholds['critical']:
-        return "Critical"
-    elif max_weight >= severity_thresholds['high']:
-        return "High"
-    elif max_weight >= severity_thresholds['medium']:
-        return "Medium"
-    else:
-        return "Low"
-
-
-def generate_display_text(predictions: List[DiseasePrediction], language: str) -> str:
-    """
-    Generate natural language summary of predictions.
-    
-    Args:
-        predictions: List of disease predictions
-        language: Target language for translation
-        
-    Returns:
-        Translated display text
-    """
-    if not predictions:
-        return "No diseases predicted based on your symptoms."
-    
-    # Create English summary
-    if len(predictions) == 1:
-        disease = predictions[0].disease
-        prob = predictions[0].prob
-        severity = predictions[0].severity
-        english_text = f"Based on your symptoms, you may have {disease} (probability: {prob:.1%}, severity: {severity})."
-    else:
-        top_disease = predictions[0].disease
-        prob = predictions[0].prob
-        severity = predictions[0].severity
-        english_text = f"Based on your symptoms, the most likely condition is {top_disease} (probability: {prob:.1%}, severity: {severity})."
-    
-    # Translate to user's language
+def ml_predict(symptoms: List[str]) -> List[Dict[str, Any]]:
+    if not model_data or "model" not in model_data:
+        return []
     try:
-        if language != 'en':
-            translated_text = translate_from_english(english_text, language)
-            return translated_text
-        else:
-            return english_text
+        model = model_data["model"]
+        class_names = model_data.get("class_names") or model_data.get("diseases") or []
+        feature_vector = build_feature_vector(symptoms, "artifacts").reshape(1, -1)
+        if hasattr(model, "predict_proba"):
+            probs = model.predict_proba(feature_vector)[0]
+            results = []
+            for disease, prob in zip(class_names, probs):
+                matched = sorted(list(set(symptoms) & disease_map.get(disease, set())))
+                results.append({
+                    "disease": disease,
+                    "score": float(prob),
+                    "matched": matched,
+                    "match_count": len(matched),
+                    "missing_count": len(set(symptoms) - disease_map.get(disease, set()))
+                })
+            results.sort(key=lambda x: x["score"], reverse=True)
+            return results
     except Exception:
-        # Fallback to English if translation fails
-        return english_text
+        pass
+    return []
 
+def choose_predictions(symptoms: List[str], pred_results: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    if not pred_results:
+        return [], "no_match"
 
-# Create FastAPI app
-app = FastAPI(
-    title="Symptoms Checker API",
-    description="AI-powered symptom analysis and disease prediction",
-    version="1.0.0"
-)
+    full_matches = [p for p in pred_results if p["missing_count"] == 0]
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    if len(full_matches) == 1:
+        return full_matches[:1], None
 
+    if len(full_matches) > 1:
+        full_matches.sort(key=lambda x: (x["score"], x["disease_coverage"]), reverse=True)
+        if len(symptoms) <= 2:
+            return [], "multiple"
+        return full_matches[:3], None
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Load artifacts on application startup.
-    """
-    print("Starting Symptoms Checker API...")
-    load_artifacts()
-    print("✓ API startup completed")
+    if len(symptoms) <= 2:
+        return [], "multiple"
 
+    if pred_results[0]["score"] <= 0:
+        return [], "no_match"
 
-@app.get("/")
-async def root():
-    """
-    Root endpoint with API information.
-    """
-    return {
-        "message": "Symptoms Checker API",
-        "version": "1.0.0",
-        "endpoints": {
-            "predict": "/predict",
-            "docs": "/docs",
-            "health": "/health"
-        }
-    }
+    return pred_results[:3], None
 
+def generate_tts_audio(display_text: str, lang: str) -> Optional[str]:
+    try:
+        cloud_lang_code = {"en": "en-US", "hi": "hi-IN", "te": "te-IN", "pa": "pa-IN", "kn": "kn-IN", "ta": "ta-IN"}.get(lang, "en-US")
+        try:
+            _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
+        except Exception:
+            _, audio_bytes, temp_path = text_to_speech_local(display_text, lang)
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        return base64.b64encode(audio_bytes).decode("utf-8")
+    except Exception:
+        return None
 
 @app.get("/health")
 async def health_check():
-    """
-    Health check endpoint.
-    """
-    return {
-        "status": "healthy",
-        "artifacts_loaded": all([
-            model_data is not None,
-            meta_data is not None,
-            symptom_severity is not None,
-            disease_precautions is not None
-        ])
-    }
+    return {"status": "healthy", "model_loaded": model_data is not None}
 
+@app.get("/users")
+def get_users():
+    users = list(users_collection.find({}, {"_id": 0, "password": 0}))
+    return users
 
-# @app.post("/predict", response_model=PredictResponse)
-# async def predict(request: PredictRequest):
-#     """
-#     Main prediction endpoint that processes text or audio input and returns disease predictions.
-    
-#     Args:
-#         request: Prediction request with input, type, language, and mode
-        
-#     Returns:
-#         Prediction response with diseases, probabilities, and additional information
-#     """
-#     try:
-#         # Validate input
-#         if request.input_type not in ['text', 'audio']:
-#             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
-        
-#         if request.language not in ['en', 'hi', 'pa']:
-#             raise HTTPException(status_code=400, detail="language must be 'en', 'hi', or 'pa'")
-        
-#         if request.mode not in ['text', 'voice']:
-#             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
-        
-#         # Step 1: Process input based on type
-#         if request.input_type == 'audio':
-#             # Process audio input
-#             input_text = process_audio_input(request.input, request.language)
-#             input_text_user_lang = input_text  # Keep original transcript
-#         else:
-#             # Use text input directly
-#             input_text = request.input
-#             input_text_user_lang = request.input
-        
-#         if not input_text.strip():
-#             raise HTTPException(status_code=400, detail="No text found in input")
-        
-#         # Debug logging: Original user text and language
-#         print(f"🔍 Original user text: '{input_text_user_lang}'")
-#         print(f"🌐 Selected language: '{request.language}'")
-        
-#         # Step 2: Force translation to English if needed
-#         if request.language != 'en':
-#             try:
-#                 print(f"🔄 Translating from {request.language} to English...")
-#                 input_text = translate_to_english(input_text_user_lang, request.language)
-#                 print(f"✅ Translated English text: '{input_text}'")
-#             except Exception as e:
-#                 print(f"❌ Translation error: {e}")
-#                 print(f"⚠️ Continuing with original text: '{input_text}'")
-#                 # Continue with original text if translation fails
-#         else:
-#             print(f"✅ Text already in English: '{input_text}'")
-        
-#         symptoms = extract_symptoms(input_text)
-#         print(f"🎯 Extracted symptoms: {symptoms}")
+@app.post("/register")
+def register(user: dict):
+    # ✅ CHECK IF USER EXISTS
+    existing_user = users_collection.find_one({"email": user["email"]})
 
-#         if not symptoms:
-#             return PredictResponse(
-#                 input_text=input_text,
-#                 input_text_user_lang=input_text_user_lang,
-#                 symptoms=[],
-#                 predictions=[],
-#                 language=request.language,
-#                 display_text="No symptoms detected.",
-#                 tts_audio_base64=None
-#             )
-        
-        
-#                 # Step 4: Predict disease candidates
-#         pred_results = predict_disease(symptoms, disease_map)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-#         if not pred_results:
-#             return PredictResponse(
-#                 input_text=input_text,
-#                 input_text_user_lang=input_text_user_lang,
-#                 symptoms=symptoms,
-#                 predictions=[],
-#                 predictions_translated=None,
-#                 language=request.language,
-#                 display_text="No matching disease found. Please add more symptoms.",
-#                 tts_audio_base64=None
-#             )
+    # ✅ CLEAN PASSWORD
+    password = user["password"].strip()
 
-#         # Prefer diseases that explain all extracted symptoms
-#         full_matches = [p for p in pred_results if p["match_count"] == len(symptoms)]
+    if len(password) > 72:
+        password = password[:72]
 
-#         if len(full_matches) == 1:
-#             selected = full_matches[:1]
+    hashed_password = pwd_context.hash(password)
 
-#         elif len(full_matches) > 1:
-#             full_matches.sort(key=lambda x: x["score"], reverse=True)
+    users_collection.insert_one({
+        "name": user["name"],
+        "email": user["email"],
+        "password": hashed_password
+    })
 
-#             if len(full_matches) >= 2 and (full_matches[0]["score"] - full_matches[1]["score"]) < 0.08:
-#                 return PredictResponse(
-#                     input_text=input_text,
-#                     input_text_user_lang=input_text_user_lang,
-#                     symptoms=symptoms,
-#                     predictions=[],
-#                     predictions_translated=None,
-#                     language=request.language,
-#                     display_text="Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
-#                     tts_audio_base64=None
-#                 )
+    return {"message": "User registered successfully"}
 
-#             selected = full_matches[:3]
+@app.post("/login")
+def login(user: dict):
+    db_user = users_collection.find_one({"email": user["email"]})
 
-#         else:
-#             if pred_results[0]["score"] < 0.35:
-#                 return PredictResponse(
-#                     input_text=input_text,
-#                     input_text_user_lang=input_text_user_lang,
-#                     symptoms=symptoms,
-#                     predictions=[],
-#                     predictions_translated=None,
-#                     language=request.language,
-#                     display_text="Symptoms are too general. Please add more symptoms for accurate prediction.",
-#                     tts_audio_base64=None
-#                 )
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-#             if len(pred_results) > 1 and abs(pred_results[0]["score"] - pred_results[1]["score"]) < 0.08:
-#                 return PredictResponse(
-#                     input_text=input_text,
-#                     input_text_user_lang=input_text_user_lang,
-#                     symptoms=symptoms,
-#                     predictions=[],
-#                     predictions_translated=None,
-#                     language=request.language,
-#                     display_text="Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
-#                     tts_audio_base64=None
-#                 )
+    password = user["password"].strip()
 
-#             selected = pred_results[:3]
+    if len(password) > 72:
+        password = password[:72]
 
-#         emergency_flag = is_emergency(symptoms)
+    if not pwd_context.verify(password, db_user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-#         disease_predictions = []
-#         for item in selected:
-#             disease = item["disease"]
-#             prob = item["score"]
-#             matched = item["matched"]
-#             precautions = disease_precautions.get(disease, [])
-#             severity = calculate_severity(matched, severity_dict)
+    return {"message": "Login successful"}
 
-#             disease_predictions.append(DiseasePrediction(
-#                 disease=disease,
-#                 prob=float(prob),
-#                 severity=severity,
-#                 precautions=precautions,
-#                 symptom_descriptions={}
-#             ))
-
-#         top_disease = disease_predictions[0].disease
-#         top_severity = disease_predictions[0].severity
-
-#         summary = f"You may have {top_disease}. Severity: {top_severity}."
-
-#         if top_severity == "Low":
-#             summary += " Home care and rest may help."
-#         elif top_severity == "Medium":
-#             summary += " Monitor symptoms and consult a doctor if they worsen."
-#         else:
-#             summary += " Consult a doctor."
-
-#         if emergency_flag:
-#             summary += " 🚨 Seek immediate medical attention!"
-
-#         # # Step 7: Generate display text
-#         # display_text = generate_display_text(disease_predictions, request.language)
-#         display_text = summary
-        
-#         # Step 7: Generate TTS audio if voice mode
-#         tts_audio_base64 = None
-#         if request.mode == 'voice':
-#             try:
-#                 # Try cloud TTS first, fallback to local
-#                 try:
-#                     cloud_lang_code = f"{request.language}-IN" if request.language in ['hi', 'pa'] else f"{request.language}-US"
-#                     _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
-#                 except Exception:
-#                     # Fallback to local TTS
-#                     _, audio_bytes, temp_path = text_to_speech_local(display_text, request.language)
-#                     # Clean up temp file
-#                     import os
-#                     if os.path.exists(temp_path):
-#                         os.unlink(temp_path)
-                
-#                 # Encode audio as base64
-#                 tts_audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-                
-#             except Exception as e:
-#                 print(f"TTS warning: {e}")
-#                 # Continue without audio if TTS fails
-#         predictions_translated = None
-#         debug_info = None
-        
-#         # Return response
-#         return PredictResponse(
-#             input_text=input_text,
-#             input_text_user_lang=input_text_user_lang,
-#             symptoms=symptoms,
-#             predictions=disease_predictions,
-#             predictions_translated=predictions_translated,
-#             language=request.language,
-#             display_text=display_text,
-#             tts_audio_base64=tts_audio_base64,
-#             debug=debug_info if debug_info else None
-#         )
-        
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         print(f"Prediction error: {e}")
-#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 @app.post("/predict", response_model=PredictResponse)
 async def predict(request: PredictRequest):
-    """
-    Main prediction endpoint that processes text or audio input and returns disease predictions.
-    """
     try:
-        # Validate input
-        if request.input_type not in ['text', 'audio']:
+        if request.input_type not in ["text", "audio"]:
             raise HTTPException(status_code=400, detail="input_type must be 'text' or 'audio'")
-
-        if request.language not in ['en', 'hi', 'pa']:
-            raise HTTPException(status_code=400, detail="language must be 'en', 'hi', or 'pa'")
-
-        if request.mode not in ['text', 'voice']:
+        if request.mode not in ["text", "voice"]:
             raise HTTPException(status_code=400, detail="mode must be 'text' or 'voice'")
 
-        # Step 1: Read input
-        if request.input_type == 'audio':
-            input_text = process_audio_input(request.input, request.language)
-            input_text_user_lang = input_text
-        else:
-            input_text = request.input
-            input_text_user_lang = request.input
-
-        if not input_text.strip():
+        input_text_user_lang = process_audio_input(request.input, request.language) if request.input_type == "audio" else request.input
+        if not input_text_user_lang.strip():
             raise HTTPException(status_code=400, detail="No text found in input")
 
-        print(f"🔍 Original user text: '{input_text_user_lang}'")
-        print(f"🌐 Selected language: '{request.language}'")
+        detected_lang = detect_language(input_text_user_lang)
+        source_lang = request.language if request.language != "en" else detected_lang
+        input_text = input_text_user_lang if source_lang == "en" else translate_to_english(input_text_user_lang, source_lang)
 
-        # Step 2: Translate if needed
-        if request.language != 'en':
-            try:
-                print(f"🔄 Translating from {request.language} to English...")
-                input_text = translate_to_english(input_text_user_lang, request.language)
-                print(f"✅ Translated English text: '{input_text}'")
-            except Exception as e:
-                print(f"❌ Translation error: {e}")
-                print(f"⚠️ Continuing with original text: '{input_text}'")
-        else:
-            print(f"✅ Text already in English: '{input_text}'")
-
-        # Step 3: Extract symptoms
         symptoms = extract_symptoms(input_text)
-        print(f"🎯 Extracted symptoms: {symptoms}")
+        symptoms_translated = localize_symptoms(symptoms, request.language)
 
         if not symptoms:
+            display_text = t(request.language, "no_symptoms")
+            tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
             return PredictResponse(
                 input_text=input_text,
                 input_text_user_lang=input_text_user_lang,
                 symptoms=[],
                 predictions=[],
-                predictions_translated=None,
+                predictions_translated=[],
+                symptoms_translated=[],
                 language=request.language,
-                display_text="No symptoms detected.",
-                tts_audio_base64=None
+                display_text=display_text,
+                tts_audio_base64=tts_audio,
+                debug={"detected_lang": detected_lang},
             )
 
-        # Step 4: Predict disease candidates
         pred_results = predict_disease(symptoms, disease_map)
+        ml_results = ml_predict(symptoms)
+        selected, reason = choose_predictions(symptoms, pred_results)
 
-        if not pred_results:
+        if reason == "no_match":
+            display_text = t(request.language, "no_match")
+            tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
             return PredictResponse(
                 input_text=input_text,
                 input_text_user_lang=input_text_user_lang,
-                symptoms=symptoms,
+                symptoms=symptoms if request.language == "en" else symptoms_translated,
                 predictions=[],
-                predictions_translated=None,
+                predictions_translated=[],
+                symptoms_translated=symptoms_translated if request.language != "en" else None,
                 language=request.language,
-                display_text="No matching disease found. Please add more symptoms.",
-                tts_audio_base64=None
+                display_text=display_text,
+                tts_audio_base64=tts_audio,
+                debug={"detected_lang": detected_lang, "rule_top": pred_results[:5], "ml_top": ml_results[:5]},
             )
 
-        #DELETE THIS 
-        # If only 1 or 2 symptoms and many diseases are close, ask for more details
-        if len(symptoms) <= 2:
-            top_same_match_count = [
-                p for p in pred_results
-                if p["match_count"] == pred_results[0]["match_count"]
-            ]
-            if len(top_same_match_count) > 1:
-                return PredictResponse(
-                    input_text=input_text,
-                    input_text_user_lang=input_text_user_lang,
-                    symptoms=symptoms,
-                    predictions=[],
-                    predictions_translated=None,
-                    language=request.language,
-                    display_text="Multiple diseases match your symptoms. Please add more symptoms for accurate prediction.",
-                    tts_audio_base64=None
-                )
-        #NEW FIELD
-        # ✅ NEW FIX: if user gives 3+ symptoms → NEVER block
-        
-        if len(symptoms) >= 3:
-            selected = pred_results[:3]
-        else:
-            selected = pred_results[:1]
+        if reason == "multiple":
+            display_text = t(request.language, "multiple")
+            tts_audio = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
+            return PredictResponse(
+                input_text=input_text,
+                input_text_user_lang=input_text_user_lang,
+                symptoms=symptoms if request.language == "en" else symptoms_translated,
+                predictions=[],
+                predictions_translated=[],
+                symptoms_translated=symptoms_translated if request.language != "en" else None,
+                language=request.language,
+                display_text=display_text,
+                tts_audio_base64=tts_audio,
+                debug={"detected_lang": detected_lang, "rule_top": pred_results[:5], "ml_top": ml_results[:5]},
+            )
 
-                
-
-        
-
-        #IMP
-        # # For 3+ symptoms, return top 3 instead of blocking too early
-        # selected = pred_results[:3]
-
-        # Step 5: Emergency check
         emergency_flag = is_emergency(symptoms)
-
-
-        #DELETE THIS
-        # Step 6: Build response predictions
         disease_predictions = []
+        predictions_translated = []
+
         for item in selected:
             disease = item["disease"]
-            prob = item["score"]
-            matched = item["matched"]
+            matched = item.get("matched", [])
             precautions = disease_precautions.get(disease, [])
+            severity_en = calculate_severity(matched, severity_dict)
+            if emergency_flag and severity_en != "High":
+                severity_en = "High"
 
-            severity = calculate_severity(matched, severity_dict)
-
-            disease_predictions.append(DiseasePrediction(
+            english_pred = DiseasePrediction(
                 disease=disease,
-                prob=float(prob),
-                severity=severity,
+                prob=float(item["score"]),
+                severity=severity_en,
                 precautions=precautions,
-                symptom_descriptions={}
-            ))
-                
-        # Step 7: Summary
+                symptom_descriptions={s: symptom_descriptions.get(s, "") for s in matched},
+            )
+            disease_predictions.append(english_pred)
+
+            translated_pred = DiseasePrediction(
+                disease=localize_disease_name(disease, request.language),
+                prob=float(item["score"]),
+                severity=localize_severity(severity_en, request.language),
+                precautions=localize_precautions(precautions, request.language),
+                symptom_descriptions={localize_symptom(k, request.language): cached_translate(v, request.language) if v else "" for k, v in english_pred.symptom_descriptions.items()},
+            )
+            predictions_translated.append(translated_pred)
+
         top_prediction = disease_predictions[0]
-        summary = f"You may have {top_prediction.disease}. Severity: {top_prediction.severity}."
-
-        if top_prediction.severity == "Low":
-            summary += " Home care and rest may help."
-        elif top_prediction.severity == "Medium":
-            summary += " Monitor symptoms and consult a doctor if they worsen."
-        else:
-            summary += " Consult a doctor."
-
-        if emergency_flag:
-            summary += " 🚨 Seek immediate medical attention!"
-
-        display_text = summary
-        print(f"🧠 FINAL OUTPUT: {display_text}")
-
-        # Step 8: TTS if voice mode
-        tts_audio_base64 = None
-        if request.mode == 'voice':
-            try:
-                try:
-                    cloud_lang_code = f"{request.language}-IN" if request.language in ['hi', 'pa'] else f"{request.language}-US"
-                    _, audio_bytes = text_to_speech_cloud(display_text, cloud_lang_code)
-                except Exception:
-                    _, audio_bytes, temp_path = text_to_speech_local(display_text, request.language)
-                    import os
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
-
-                tts_audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-
-            except Exception as e:
-                print(f"TTS warning: {e}")
+        display_text = build_summary(top_prediction.disease, top_prediction.severity, request.language, emergency_flag)
+        tts_audio_base64 = generate_tts_audio(display_text, request.language) if request.mode == "voice" else None
 
         return PredictResponse(
             input_text=input_text,
             input_text_user_lang=input_text_user_lang,
-            symptoms=symptoms,
+            symptoms=symptoms if request.language == "en" else symptoms_translated,
             predictions=disease_predictions,
-            predictions_translated=None,
+            predictions_translated=predictions_translated if request.language != "en" else None,
+            symptoms_translated=symptoms_translated if request.language != "en" else None,
             language=request.language,
             display_text=display_text,
             tts_audio_base64=tts_audio_base64,
-            debug=None
+            debug={
+                "detected_lang": detected_lang,
+                "used_rule_based_primary": True,
+                "rule_top": pred_results[:5],
+                "ml_top": ml_results[:5],
+            },
         )
-
     except HTTPException:
         raise
     except Exception as e:
         print(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-
 def find_available_port(start_port=8000, max_port=8010):
-    """
-    Find an available port starting from start_port up to max_port.
-    
-    Args:
-        start_port: Starting port number
-        max_port: Maximum port number to try
-        
-    Returns:
-        Available port number
-        
-    Raises:
-        RuntimeError: If no available port found
-    """
     import socket
-    
     for port in range(start_port, max_port + 1):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('0.0.0.0', port))
+                s.bind(("0.0.0.0", port))
                 return port
         except OSError:
             continue
-    
     raise RuntimeError(f"No available port found between {start_port} and {max_port}")
-
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # Find available port
-    try:
-        port = find_available_port()
-        print(f"⚡ API running on http://localhost:{port}")
-        print(f"📚 API Documentation: http://localhost:{port}/docs")
-        print(f"❤️ Health Check: http://localhost:{port}/health")
-        print("=" * 50)
-        
-        uvicorn.run(app, host="0.0.0.0", port=port)
-    except RuntimeError as e:
-        print(f"❌ Error: {e}")
-        print("Please free up some ports or modify the port range in the code.")
+    port = find_available_port()
+    print(f"⚡ API running on http://localhost:{port}")
+    print(f"📚 API Documentation: http://localhost:{port}/docs")
+    print(f"❤️ Health Check: http://localhost:{port}/health")
+    print("=" * 50)
+    uvicorn.run(app, host="0.0.0.0", port=port)

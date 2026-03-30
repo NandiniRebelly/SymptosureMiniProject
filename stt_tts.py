@@ -250,7 +250,8 @@ class SpeechProcessor:
             
             # Recognize speech using Google Web Speech API
             try:
-                transcribed_text = recognizer.recognize_google(audio_data)
+                # transcribed_text = recognizer.recognize_google(audio_data)
+                transcribed_text = recognizer.recognize_google(audio_data, language="en-IN")
                 return transcribed_text.strip()
             except sr.UnknownValueError:
                 return ""
@@ -291,9 +292,19 @@ class SpeechProcessor:
         try:
             from gtts import gTTS
             
-            # Create gTTS object
-            tts = gTTS(text=text, lang=lang, slow=False)
-            
+            # # Create gTTS object
+            # tts = gTTS(text=text, lang=lang, slow=False)
+
+            gtts_lang_map = {
+        "en": "en",
+        "hi": "hi",
+        "te": "te",
+        "pa": "pa",
+        "kn": "kn",
+        "ta": "ta",
+            }
+            tts = gTTS(text=text, lang=gtts_lang_map.get(lang, "en"), slow=False)
+                
             # Create temporary file
             with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
                 temp_file_path = temp_file.name
@@ -330,32 +341,56 @@ class SpeechProcessor:
         Returns:
             Dictionary mapping language codes to language names
         """
+        # return {
+        #     'en': 'English',
+        #     'en-US': 'English (US)',
+        #     'hi': 'Hindi',
+        #     'hi-IN': 'Hindi (India)',
+            
+        #     'te': 'Telugu',
+        #     'te-IN': 'Telugu (India)',
+        
+        #     'pa': 'Punjabi',
+        #     'pa-IN': 'Punjabi (India)',
+        #     'es': 'Spanish',
+        #     'es-ES': 'Spanish (Spain)',
+        #     'fr': 'French',
+        #     'fr-FR': 'French (France)',
+        #     'de': 'German',
+        #     'de-DE': 'German (Germany)',
+        #     'it': 'Italian',
+        #     'it-IT': 'Italian (Italy)',
+        #     'pt': 'Portuguese',
+        #     'pt-PT': 'Portuguese (Portugal)',
+        #     'ru': 'Russian',
+        #     'ru-RU': 'Russian (Russia)',
+        #     'ja': 'Japanese',
+        #     'ja-JP': 'Japanese (Japan)',
+        #     'ko': 'Korean',
+        #     'ko-KR': 'Korean (Korea)',
+        #     'zh': 'Chinese',
+        #     'zh-CN': 'Chinese (Simplified)'
+        # }
+
         return {
-            'en': 'English',
-            'en-US': 'English (US)',
-            'hi': 'Hindi',
-            'hi-IN': 'Hindi (India)',
-            'pa': 'Punjabi',
-            'pa-IN': 'Punjabi (India)',
-            'es': 'Spanish',
-            'es-ES': 'Spanish (Spain)',
-            'fr': 'French',
-            'fr-FR': 'French (France)',
-            'de': 'German',
-            'de-DE': 'German (Germany)',
-            'it': 'Italian',
-            'it-IT': 'Italian (Italy)',
-            'pt': 'Portuguese',
-            'pt-PT': 'Portuguese (Portugal)',
-            'ru': 'Russian',
-            'ru-RU': 'Russian (Russia)',
-            'ja': 'Japanese',
-            'ja-JP': 'Japanese (Japan)',
-            'ko': 'Korean',
-            'ko-KR': 'Korean (Korea)',
-            'zh': 'Chinese',
-            'zh-CN': 'Chinese (Simplified)'
-        }
+    'en': 'English',
+    'en-US': 'English (US)',
+
+    'hi': 'Hindi',
+    'hi-IN': 'Hindi (India)',
+
+    'te': 'Telugu',
+    'te-IN': 'Telugu (India)',
+
+    'pa': 'Punjabi',
+    'pa-IN': 'Punjabi (India)',
+
+    'kn': 'Kannada',
+    'kn-IN': 'Kannada (India)',
+
+    'ta': 'Tamil',
+    'ta-IN': 'Tamil (India)',
+}
     
     def get_service_info(self) -> dict:
         """

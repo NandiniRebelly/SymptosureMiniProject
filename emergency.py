@@ -8,4 +8,4 @@ def is_emergency(symptoms):
         "acute_liver_failure",
         "weakness_of_one_body_side" 
     }
-    return any(symptom in red_flags for symptom in symptoms)
+    return any(symptom in red_flags for symptom in symptoms) 
