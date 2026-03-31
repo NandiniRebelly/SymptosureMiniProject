@@ -3,9 +3,108 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <title>Symptoms Checker</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* 🔷 NAVBAR */
+/* 🔷 NAVBAR (LIGHT BEAUTIFUL) */
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    z-index: 1000;
+}
+
+.nav-left {
+    font-weight: bold;
+    font-size: 20px;
+    color: #333;
+}
+
+.nav-right {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-btn {
+    background: linear-gradient(135deg, #eef2ff, #dde3ff);
+    color: #333;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.nav-btn:hover {
+    background: linear-gradient(135deg, #dde3ff, #cfd8ff);
+}
+
+.logout {
+    background: linear-gradient(135deg, #ffdddd, #ffc9c9);
+    color: #c82333;
+}
+
+.logout:hover {
+    background: linear-gradient(135deg, #ffc9c9, #ffb3b3);
+}
+
+/* 🌟 CONTAINER IMPROVEMENT */
+.container {
+    margin-top: 80px;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 720px;
+    width: 100%;
+}
+
+/* 🔥 REDUCE GAP */
+.header {
+    text-align: center;
+    margin-bottom: 8px; /* reduced */
+}
+
+.status-indicator {
+    margin-top: 4px; /* reduced */
+}
+
+/* 🔥 FULL WIDTH BUTTON */
+#submitBtn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+}
+
+/* REMOVE OLD BUTTON GROUP STRETCH */
+.button-group button {
+    flex: none;
+}
+
+/* 🌈 BUTTON COLORS */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #5a6fd8);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8, #4e63c7);
+}
+
+/* push content down because navbar is fixed */
+.container {
+    margin-top: 80px;
+}
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -37,7 +136,7 @@
         .status-online { background: #d4edda; color: #155724; }
         .status-offline { background: #f8d7da; color: #721c24; }
 
-        .form-group { margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; }
         .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -175,12 +274,34 @@
     </style>
 </head>
 <body>
+
+<!-- 🔷 NAVBAR -->
+<div class="navbar">
+    <div class="nav-left">
+        🏥 Symptoms Checker
+    </div>
+
+    <div class="nav-right">
+        <button onclick="goToHistory()" class="nav-btn">📜 History</button>
+        <button onclick="logout(event)" class="nav-btn logout">🚪 Logout</button>
+    </div>
+</div>
+
 <div class="container">
+
     <div class="header">
+        <p>AI-powered symptom analysis and disease prediction</p>
+        <div id="statusIndicator" class="status-indicator status-online">
+            🌐 Connected to API
+        </div>
+    </div>
+
+<div class="container">
+    <!-- <div class="header">
         <h1>🏥 Symptoms Checker</h1>
         <p>AI-powered symptom analysis and disease prediction</p>
         <div id="statusIndicator" class="status-indicator status-online">🌐 Connected to API</div>
-    </div>
+    </div> -->
 
     <form id="symptomsForm">
         <div class="form-group">
@@ -215,7 +336,19 @@
             <textarea id="symptomsInput" name="symptoms" placeholder="Enter your symptoms here..."></textarea>
         </div>
 
-        <div class="button-group">
+        <!-- <div class="button-group">
+            <button type="button" onclick="goToHistory()" class="btn-secondary">
+                📜 View History
+            </button> -->
+
+            <script>
+            function goToHistory() {
+                window.location.href = "history.html";
+            }
+            </script>
+            <!-- <button type="button" onclick="logout(event)" class="btn-danger">
+                🚪 Logout
+            </button> -->
             <button type="button" id="recordBtn" class="btn-secondary" style="display:none;">🎤 Start Recording</button>
             <button type="button" id="stopBtn" class="btn-danger" style="display:none;">⏹️ Stop Recording</button>
             <button type="submit" id="submitBtn" class="btn-primary">🔍 Analyze Symptoms</button>
@@ -228,12 +361,40 @@
     </form>
 
     <div id="results" class="results">
+        <div id="historySection" class="results" style="display:none;">
+            <h3>📜 Your History</h3>
+            <div id="historyContent"></div>
+        </div>
         <div id="loadingIndicator" class="loading" style="display:none;">🔄 Analyzing symptoms...</div>
         <div id="resultsContent"></div>
     </div>
+
+    <button id="downloadBtn" type="button" onclick="downloadPDF()" 
+        class="btn-success" style="margin-top:15px; display:none;">
+        📄 Download Report
+    </button>
+
 </div>
 
 <script>
+    // 🔐 LOGIN PROTECTION
+window.onload = function () {
+    const email = localStorage.getItem("email");
+
+    if (!email) {
+        alert("Please login first 🔐");
+        window.location.href = "login.html";
+    }
+};
+
+function logout(event) {
+    if (event) event.preventDefault();  // stop form submit
+
+    localStorage.removeItem("email");
+
+    window.location.href = "login.html";
+}
+
 let currentMode = 'text';
 let isRecording = false;
 let recognition = null;
@@ -547,11 +708,6 @@ function initializeSpeechRecognition() {
     }
 }
 
-// function updateRecognitionLanguage(lang) {
-//     if (!recognition) return;
-//     const languageMap = { en: 'en-US', hi: 'hi-IN', te: 'te-IN' };
-//     recognition.lang = languageMap[lang] || 'en-US';
-// }
 
 function updateRecognitionLanguage(lang) {
     if (!recognition) return;
@@ -593,6 +749,54 @@ function stopVoiceRecording() {
     if (recognition && isRecording) recognition.stop();
 }
 
+async function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const email = localStorage.getItem("email") || "guest";
+    const symptoms = document.getElementById("symptomsInput").value;
+
+    if (!currentResults) {
+        alert("No results to download");
+        return;
+    }
+
+    const prediction = currentResults.predictions[0];
+
+    let y = 10;
+
+    doc.setFontSize(16);
+    doc.text("🩺 Medical Report", 20, y);
+    y += 10;
+
+    doc.setFontSize(12);
+
+    doc.text(`User: ${email}`, 20, y); y += 8;
+    doc.text(`Date: ${new Date().toLocaleString()}`, 20, y); y += 10;
+
+    doc.text("Symptoms:", 20, y); y += 8;
+    doc.text(symptoms, 20, y); y += 10;
+
+    doc.text("Prediction:", 20, y); y += 8;
+    doc.text(prediction.disease, 20, y); y += 10;
+
+    doc.text("Severity:", 20, y); y += 8;
+    doc.text(prediction.severity, 20, y); y += 10;
+
+    doc.text("Precautions:", 20, y); y += 8;
+
+    prediction.precautions.forEach((p, index) => {
+        doc.text(`- ${p}`, 25, y);
+        y += 7;
+    });
+
+    y += 5;
+    doc.text("Summary:", 20, y); y += 8;
+    doc.text(currentResults.display_text || "", 20, y);
+
+    doc.save("medical_report.pdf");
+}
+
 async function handleFormSubmit(event) {
     event.preventDefault();
 
@@ -629,11 +833,14 @@ async function handleFormSubmit(event) {
 async function callCloudAPI(symptomsText, language, mode = 'text') {
     if (!apiPort) throw new Error('API not available - no port detected');
 
+    const email = localStorage.getItem("email") || "guest";   // ✅ ADD THIS
+
     const requestBody = {
         input: symptomsText,
         input_type: 'text',
         language: language,
-        mode: mode
+        mode: mode,
+        email: email   // ✅ ADD THIS
     };
 
     const response = await fetch(`http://localhost:${apiPort}/predict`, {
@@ -741,6 +948,8 @@ function displayResults(response) {
     } else {
         ttsControls.style.display = 'none';
     }
+
+    document.getElementById("downloadBtn").style.display = "block";
 }
 
 function showLoading(show) {
