@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <title>Login</title>
@@ -106,5 +106,52 @@
     }
 </script>
 
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <style>
+    :root{--bg1:#edf9f8;--bg2:#eef5ff;--card:rgba(255,255,255,.86);--ink:#16313f;--muted:#5c7281;--primary:#1f8f95;--secondary:#4669d8;}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,Segoe UI,Tahoma,sans-serif;color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2));display:grid;place-items:center;padding:20px;}
+    .card{width:min(100%,420px);background:var(--card);backdrop-filter:blur(12px);border:1px solid rgba(118,152,170,.18);border-radius:28px;padding:34px;box-shadow:0 24px 60px rgba(17,58,76,.14)}
+    h1{margin:0 0 8px;font-size:2rem;text-align:center} p.sub{margin:0 0 24px;color:var(--muted);text-align:center} input{width:100%;padding:14px 16px;margin:10px 0;border:1px solid rgba(118,152,170,.28);border-radius:16px;font-size:1rem} input:focus{outline:none;border-color:rgba(31,143,149,.55);box-shadow:0 0 0 4px rgba(31,143,149,.12)}
+    button{width:100%;margin-top:14px;padding:14px 16px;border:none;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;font-weight:800;font-size:1rem;cursor:pointer} button:disabled{opacity:.7;cursor:not-allowed} .msg{min-height:24px;margin-top:12px;text-align:center;color:#b42318;font-weight:600} .foot{text-align:center;margin-top:18px} a{color:var(--secondary);text-decoration:none;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Login</h1>
+    <p class="sub">Sign in to view history and use Symptoms Checker.</p>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="loginBtn" onclick="loginUser()">Login</button>
+    <div id="message" class="msg"></div>
+    <div class="foot">Don't have an account? <a href="register.html">Register</a></div>
+  </div>
+<script>
+async function loginUser(){
+  const email=document.getElementById('email').value.trim().toLowerCase();
+  const password=document.getElementById('password').value.trim();
+  const msg=document.getElementById('message');
+  const btn=document.getElementById('loginBtn');
+  msg.textContent='';
+  if(!email||!password){msg.textContent='Please enter email and password.';return;}
+  btn.disabled=true; btn.textContent='Logging in...';
+  try{
+    const res=await fetch('http://localhost:8000/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail||'Login failed');
+    localStorage.setItem('email',email);
+    localStorage.setItem('userName',data.name||'');
+    window.location.href='index.html';
+  }catch(err){ msg.textContent=err.message||'Login failed'; }
+  finally{ btn.disabled=false; btn.textContent='Login'; }
+}
+</script>
 </body>
 </html>
