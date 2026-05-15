@@ -1,3 +1,1566 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>SymptoSure</title>
+    <style>
+        :root {
+            --bg-1: #eaf7f6;
+            --bg-2: #f5fbff;
+            --bg-3: #eef2ff;
+            --ink: #16313f;
+            --muted: #5c7281;
+            --line: rgba(118, 152, 170, 0.22);
+            --card: rgba(255, 255, 255, 0.78);
+            --card-strong: rgba(255, 255, 255, 0.9);
+            --primary: #1f8f95;
+            --primary-dark: #166f75;
+            --secondary: #4669d8;
+            --accent: #7ec9c7;
+            --success: #169c55;
+            --warning-bg: #fff3d7;
+            --warning-text: #8a6500;
+            --shadow-lg: 0 24px 60px rgba(17, 58, 76, 0.18);
+            --shadow-md: 0 16px 34px rgba(20, 72, 88, 0.12);
+            --radius-xl: 28px;
+            --radius-lg: 22px;
+            --radius-md: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { min-height: 100%; }
+
+        html {
+            background:
+                radial-gradient(circle at 12% 18%, rgba(63, 180, 176, 0.26), transparent 24%),
+                radial-gradient(circle at 88% 14%, rgba(70, 105, 216, 0.24), transparent 28%),
+                radial-gradient(circle at 78% 82%, rgba(126, 201, 199, 0.22), transparent 24%),
+                linear-gradient(135deg, #edf9f8 0%, #eef5ff 52%, #f6f2ff 100%);
+            background-attachment: fixed;
+        }
+
+        body {
+            min-height: 100dvh;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--ink);
+            background: transparent;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.28;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 900'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffffff' stop-opacity='.95'/%3E%3Cstop offset='1' stop-color='%23d7f0f0' stop-opacity='.85'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='%231f8f95' stroke-opacity='.18' stroke-width='10'%3E%3Ccircle cx='1080' cy='230' r='124'/%3E%3Cpath d='M1040 155v150M965 230h150'/%3E%3Cpath d='M275 640c18-62 61-104 122-104 46 0 79 20 104 48 14 15 18 36 10 55-13 32-49 45-82 29-15-7-27-18-44-18-28 0-46 27-63 52-18 27-53 34-80 15-28-18-37-56-20-83 17-27 40-47 53-76z'/%3E%3Cpath d='M780 720c-13-54-49-89-101-89-41 0-69 17-91 41-14 15-17 38-8 56 12 25 41 38 69 30 19-5 35-20 57-20 29 0 49 24 66 49 17 24 50 31 75 16 26-15 37-48 25-75-12-28-40-45-51-76z'/%3E%3C/g%3E%3Cg fill='url(%23g)' opacity='.95'%3E%3Crect x='106' y='110' width='250' height='170' rx='32'/%3E%3Crect x='990' y='522' width='230' height='160' rx='32'/%3E%3C/g%3E%3C/svg%3E");
+            background-size: cover;
+            background-position: center;
+        }
+
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1200;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 22px;
+            background: rgba(247, 252, 252, 0.78);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(126, 201, 199, 0.18);
+            box-shadow: 0 10px 28px rgba(20, 72, 88, 0.08);
+        }
+
+        .nav-left {
+            font-weight: 800;
+            font-size: 1.14rem;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.01em;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            border: 1px solid rgba(118, 152, 170, 0.16);
+            border-radius: 999px;
+            padding: 11px 16px;
+            font-weight: 700;
+            cursor: pointer;
+            background: rgba(255,255,255,0.78);
+            color: #274151;
+            box-shadow: 0 8px 18px rgba(21, 74, 90, 0.06);
+            transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(21,74,90,.1); }
+        .nav-btn.logout { background: rgba(255, 239, 239, 0.92); color: #bd2f2f; }
+
+        .page-wrap {
+            min-height: calc(100dvh - 74px);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 28px 20px 34px;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 1180px;
+            background: linear-gradient(180deg, rgba(255,255,255,.80), rgba(255,255,255,.72));
+            border: 1px solid rgba(126, 201, 199, 0.16);
+            border-radius: 34px;
+            box-shadow: var(--shadow-lg);
+            padding: 30px;
+            backdrop-filter: blur(16px);
+            overflow: hidden;
+        }
+
+        .container::before,
+        .container::after {
+            content: "";
+            position: absolute;
+            border-radius: 999px;
+            pointer-events: none;
+            filter: blur(4px);
+        }
+
+        .container::before {
+            width: 240px; height: 240px; top: -90px; right: -40px;
+            background: radial-gradient(circle, rgba(126, 201, 199, 0.22), transparent 68%);
+        }
+
+        .container::after {
+            width: 260px; height: 260px; left: -70px; bottom: -120px;
+            background: radial-gradient(circle, rgba(70, 105, 216, 0.12), transparent 72%);
+        }
+
+        .hero-shell {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(300px, .9fr);
+            gap: 24px;
+            margin-bottom: 24px;
+            padding: 22px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(255,255,255,.75), rgba(239,248,248,.72));
+            border: 1px solid rgba(126, 201, 199, 0.18);
+            box-shadow: var(--shadow-md);
+        }
+
+        .header {
+            text-align: left;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: rgba(31, 143, 149, 0.10);
+            color: var(--primary-dark);
+            font-weight: 800;
+            font-size: .9rem;
+            letter-spacing: .01em;
+        }
+
+        .header h1 {
+            font-size: clamp(2.2rem, 3.4vw, 3.5rem);
+            color: #183244;
+            line-height: 1.06;
+            margin: 0;
+            font-weight: 900;
+        }
+
+        .header p {
+            color: var(--muted);
+            font-size: 1.08rem;
+            line-height: 1.65;
+            max-width: 620px;
+            margin: 0;
+        }
+
+        .header-highlight {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+            max-width: 540px;
+        }
+
+        .hero-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,.76);
+            border: 1px solid rgba(118, 152, 170, 0.14);
+            color: #294452;
+            font-weight: 700;
+            box-shadow: 0 8px 18px rgba(21,74,90,.05);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-size: .95rem;
+            font-weight: 800;
+            margin-top: 4px;
+        }
+
+        .status-online { background: rgba(28, 171, 95, 0.12); color: #0f7d43; }
+        .status-offline { background: rgba(214, 57, 73, 0.12); color: #a42a2a; }
+
+        .hero-visual {
+            position: relative;
+            min-height: 290px;
+            border-radius: 28px;
+            overflow: hidden;
+            background:
+              linear-gradient(135deg, rgba(31,143,149,.22), rgba(70,105,216,.18)),
+              url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 540'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ecfbfb'/%3E%3Cstop offset='1' stop-color='%23eef2ff'/%3E%3C/linearGradient%3E%3ClinearGradient id='line' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0' stop-color='%231f8f95'/%3E%3Cstop offset='1' stop-color='%234669d8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='540' fill='url(%23bg)'/%3E%3Ccircle cx='598' cy='94' r='62' fill='%23d9f2f1'/%3E%3Ccircle cx='674' cy='158' r='34' fill='%23e4ebff'/%3E%3Cpath d='M514 136c0-70-57-127-127-127s-127 57-127 127v73h254v-73z' fill='%23ffffff'/%3E%3Crect x='230' y='186' width='314' height='192' rx='28' fill='%23ffffff' stroke='%23dbe8ef'/%3E%3Cpath d='M392 122c-60 0-109 49-109 109v95h218v-95c0-60-49-109-109-109z' fill='%23f8fcff' stroke='%23dbe8ef'/%3E%3Ccircle cx='391' cy='218' r='54' fill='%23f4fbfb' stroke='%23dce9ef'/%3E%3Cpath d='M390 171c28 0 51 23 51 51s-23 51-51 51-51-23-51-51 23-51 51-51z' fill='%23ffffff'/%3E%3Cpath d='M468 378c-16-35-43-57-77-57-35 0-63 20-79 57' fill='none' stroke='%231f8f95' stroke-width='14' stroke-linecap='round'/%3E%3Crect x='122' y='252' width='108' height='74' rx='22' fill='%23ffffff' stroke='%23dbe7ee'/%3E%3Cpath d='M176 271v35M158 288h36' stroke='url(%23line)' stroke-width='12' stroke-linecap='round'/%3E%3Crect x='557' y='246' width='128' height='88' rx='24' fill='%23ffffff' stroke='%23dbe7ee'/%3E%3Cpath d='M598 278h47M598 300h58M598 322h36' stroke='%23607b8b' stroke-width='10' stroke-linecap='round' opacity='.58'/%3E%3Crect x='121' y='374' width='564' height='72' rx='28' fill='%23ffffff' stroke='%23dce8ef'/%3E%3Cpath d='M171 408h220' stroke='url(%23line)' stroke-width='16' stroke-linecap='round'/%3E%3Ccircle cx='606' cy='410' r='22' fill='%23dff4f2'/%3E%3Cpath d='M383 69v82M342 110h82' stroke='url(%23line)' stroke-width='14' stroke-linecap='round'/%3E%3C/svg%3E") center/cover no-repeat;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 16px 32px rgba(21,74,90,.10);
+        }
+
+        .hero-visual::after {
+            content: "Secure • Multilingual • Fast";
+            position: absolute;
+            left: 18px;
+            bottom: 18px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.88);
+            color: #294452;
+            font-weight: 800;
+            font-size: .88rem;
+            letter-spacing: .03em;
+            box-shadow: 0 10px 24px rgba(21,74,90,.08);
+        }
+
+        .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+        .surface-panel {
+            background: rgba(255,255,255,.68);
+            border: 1px solid rgba(118,152,170,.14);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 16px 30px rgba(21,74,90,.06);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: .98rem;
+            font-weight: 800;
+            color: #223948;
+            margin-bottom: 10px;
+        }
+
+        select, textarea, input[type="text"] {
+            width: 100%;
+            border: 1.6px solid rgba(118, 152, 170, 0.24);
+            border-radius: 18px;
+            padding: 14px 16px;
+            font-size: 1rem;
+            background: rgba(255,255,255,.92);
+            color: #17303f;
+            transition: .2s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+        }
+
+        select:focus, textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: rgba(31,143,149,.58);
+            box-shadow: 0 0 0 5px rgba(31,143,149,.12);
+        }
+
+        textarea { min-height: 108px; resize: vertical; }
+
+        .form-actions {
+            margin-top: -2px;
+            margin-bottom: 2px;
+        }
+
+        .mode-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background: rgba(234, 242, 246, 0.9);
+            padding: 6px;
+            border-radius: 18px;
+            border: 1px solid rgba(118,152,170,.12);
+        }
+
+        .mode-toggle button {
+            border: none;
+            border-radius: 14px;
+            padding: 13px 12px;
+            background: transparent;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            color: #38505d;
+            transition: .22s ease;
+        }
+
+        .mode-toggle button.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            box-shadow: 0 10px 22px rgba(70,105,216,.26);
+        }
+
+        .voice-status {
+            display: none;
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-weight: 800;
+        }
+        .voice-listening { background: rgba(22, 156, 85, .12); color: #12652f; }
+        .voice-error { background: rgba(210, 57, 73, .12); color: #a22727; }
+        .voice-idle { background: rgba(235, 240, 244, .92); color: #45505f; }
+
+        .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        button {
+            border: none;
+            border-radius: 18px;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+        button:hover { transform: translateY(-1px); filter: saturate(1.04); }
+        button:disabled { opacity: .68; cursor: not-allowed; transform: none; }
+
+        .btn-primary {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(70,105,216,.26);
+        }
+        .btn-secondary { background: linear-gradient(135deg, #6a7b89, #53616d); color: #fff; }
+        .btn-danger { background: linear-gradient(135deg, #e35866, #c93d4c); color: #fff; }
+        .btn-success { background: linear-gradient(135deg, #1aa463, #148f54); color: #fff; }
+        .btn-chat {
+            background: linear-gradient(135deg, #2d8b8f, #4669d8);
+            color: #fff;
+            min-width: 190px;
+            box-shadow: 0 14px 28px rgba(45, 139, 143, .20);
+        }
+
+        .btn-chat:hover {
+            box-shadow: 0 18px 32px rgba(45, 139, 143, .24);
+        }
+
+        .results {
+            margin-top: 26px;
+            display: none;
+            background: linear-gradient(180deg, rgba(248,252,252,.86), rgba(245,248,251,.86));
+            border: 1px solid rgba(118,152,170,.12);
+            border-radius: 26px;
+            padding: 24px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.82), 0 18px 40px rgba(21,74,90,.08);
+        }
+        .results.show { display: block; }
+
+        .loading { text-align: center; color: var(--muted); font-weight: 800; padding: 18px 0; }
+
+        .result-item {
+            background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(250,252,255,.94));
+            padding: 18px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(118,152,170,.12);
+            border-left: 6px solid var(--primary);
+            box-shadow: 0 14px 28px rgba(21,74,90,.06);
+        }
+        .result-item h3 { color: #203745; margin-bottom: 10px; font-size: 1.18rem; }
+        .probability { color: #3566da; font-weight: 900; font-size: 1.35rem; }
+
+        .severity {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: .92rem;
+            font-weight: 900;
+        }
+        .severity-low { background: #daf3df; color: #166534; }
+        .severity-medium { background: #fff1c9; color: #8a6300; }
+        .severity-high { background: #fbd8dd; color: #8e2331; }
+
+        .precautions { margin-top: 14px; }
+        .precautions ul { padding-left: 22px; margin-top: 8px; }
+        .precautions li { margin-bottom: 6px; line-height: 1.6; }
+        .error { background: #fde3e3; color: #9d1f1f; padding: 14px 16px; border-radius: 14px; font-weight: 800; }
+
+        .results-actions {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .results-actions-left {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .results-actions.show { display: flex; }
+
+        #downloadBtn {
+            min-width: 230px;
+            box-shadow: 0 14px 28px rgba(26, 164, 99, .20);
+        }
+
+        #ttsControls {
+            display: none;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #ttsControls .btn-success,
+        #ttsControls .btn-secondary {
+            min-width: 190px;
+        }
+
+        .chat-toggle-btn {
+            display: none;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 1px solid rgba(126, 201, 199, 0.25);
+            background: linear-gradient(135deg, #ffffff, #effaf9);
+            color: var(--primary-dark);
+            font-size: 1.5rem;
+            box-shadow: 0 16px 28px rgba(22, 111, 117, 0.16);
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }
+        .chat-toggle-btn.show { display: inline-flex; }
+        .chat-toggle-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+        }
+
+        .chatbot-box {
+            display: none;
+            width: 100%;
+            margin-top: 20px;
+            background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(247,251,252,.95));
+            border: 1px solid rgba(118,152,170,.14);
+            border-left: 6px solid var(--primary);
+            border-radius: 26px;
+            padding: 22px;
+            box-shadow: 0 18px 40px rgba(21,74,90,.10);
+        }
+        .chatbot-box.show { display: block; }
+
+        .chatbot-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .chatbot-title { font-size: 1.4rem; font-weight: 900; color: #203745; }
+        .chatbot-subtitle { color: var(--muted); font-size: .99rem; line-height: 1.65; max-width: 860px; }
+
+        .quick-questions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .quick-questions button {
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(232,244,248,.98), rgba(231,236,255,.95));
+            color: #284e5e;
+            border: 1px solid rgba(118,152,170,.12);
+            border-radius: 16px;
+            font-weight: 800;
+            width: 100%;
+            text-align: left;
+            line-height: 1.42;
+        }
+
+        .chat-history {
+            min-height: 190px;
+            max-height: 470px;
+            overflow-y: auto;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(246,249,252,.95), rgba(242,248,248,.92));
+            padding: 16px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(118,152,170,.12);
+            scroll-behavior: smooth;
+        }
+
+        .chat-history::-webkit-scrollbar { width: 10px; }
+        .chat-history::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(31,143,149,.35), rgba(70,105,216,.35));
+            border-radius: 999px;
+        }
+        .chat-empty { color: #657084; font-size: .98rem; line-height: 1.65; padding: 6px 2px; }
+        .chat-message {
+            position: relative;
+            max-width: 92%;
+            padding: 16px 18px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            line-height: 1.78;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            font-size: 1rem;
+            box-shadow: 0 12px 24px rgba(21,74,90,.07);
+            animation: chatPop .28s ease;
+            border: 1px solid rgba(118,152,170,.10);
+        }
+
+        .chat-message::before {
+            display: block;
+            font-size: .74rem;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            opacity: .8;
+        }
+        .chat-user {
+            background: linear-gradient(135deg, #eef5ff, #e4edff);
+            color: #27448d;
+            margin-left: auto;
+            border-bottom-right-radius: 8px;
+        }
+
+        .chat-user::before {
+            content: "YOUR QUESTION";
+            color: #4a67bf;
+        }
+        .chat-bot {
+            background: linear-gradient(135deg, #eef9f2, #def2e8);
+            color: #17643a;
+            margin-right: auto;
+            border-bottom-left-radius: 8px;
+            border-left: 4px solid rgba(31,143,149,.42);
+        }
+
+        .chat-bot::before {
+            content: "CARE GUIDE";
+            color: #1f8f95;
+        }
+
+        .chat-typing {
+            background: linear-gradient(135deg, #fffaf0, #f6f7ff);
+            color: #536273;
+            font-style: italic;
+            margin-right: auto;
+        }
+
+        .chat-typing::before {
+            content: "THINKING";
+            color: #7b8797;
+        }
+
+        .chat-bot ul, .chat-bot ol { padding-left: 20px; margin: 10px 0 0; }
+        .chat-bot li { margin-bottom: 6px; }
+
+        @keyframes chatPop {
+            from { opacity: 0; transform: translateY(8px) scale(.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .chat-input-row { display: flex; gap: 12px; align-items: stretch; }
+        .chat-input-row input { flex: 1; min-width: 0; min-height: 56px; }
+
+        .chat-disclaimer {
+            display: none;
+            margin-top: 12px;
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border-radius: 14px;
+            padding: 12px 14px;
+            line-height: 1.55;
+            font-weight: 700;
+        }
+
+        @media (max-width: 1080px) {
+            .hero-shell { grid-template-columns: 1fr; }
+            .hero-visual { min-height: 240px; }
+        }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 12px 14px; }
+            .nav-left { font-size: 1rem; }
+            .page-wrap { padding: 16px 14px 22px; }
+            .container { padding: 18px; border-radius: 24px; }
+            .hero-shell { padding: 16px; border-radius: 22px; }
+            .header h1 { font-size: 2rem; }
+            .header-highlight { grid-template-columns: 1fr; }
+            .button-group, .chat-input-row, .results-actions, .results-actions-left { flex-direction: column; }
+            .btn-chat, #downloadBtn, .chat-toggle-btn { width: 100%; }
+            .results { padding: 16px; }
+            .chatbot-box { padding: 18px; }
+            .quick-questions { grid-template-columns: 1fr; }
+            .chat-history { max-height: 420px; }
+            .chat-message { max-width: 100%; }
+            textarea { min-height: 100px; }
+        }
+    </style>
+</head>
+<body>
+<div class="navbar">
+    <div class="nav-left">🏥 SymptoSure</div>
+    <div class="nav-right">
+        <button onclick="goToHistory()" class="nav-btn">📜 History</button>
+        <button onclick="logout(event)" class="nav-btn logout">🚪 Logout</button>
+    </div>
+</div>
+<div class="page-wrap">
+    <div class="container">
+        <div class="hero-shell">
+            <div class="header">
+                <div class="eyebrow">🩺 Smart health screening</div>
+                <h1 id="mainTitle"> Symptoms Checker</h1>
+                <p id="mainSubtitle">AI-powered symptom analysis and disease prediction</p>
+                <div id="statusIndicator" class="status-indicator status-online">🌐 Connected to API</div>
+                <div class="header-highlight">
+                    <div class="hero-pill">⚡ Fast symptom analysis</div>
+                    <div class="hero-pill">🌍 Multilingual guidance</div>
+                </div>
+            </div>
+            <div class="hero-visual" aria-hidden="true"></div>
+        </div>
+
+        <form id="symptomsForm" class="grid">
+            <div class="surface-panel">
+            <div class="form-group">
+                <label for="language" id="languageLabel">Language / भाषा / భాష / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ</label>
+                <select id="language" name="language">
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी (Hindi)</option>
+                    <option value="te">తెలుగు (Telugu)</option>
+                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                    <option value="ta">தமிழ் (Tamil)</option>
+                    <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label id="inputModeLabel">Input Mode</label>
+                <div class="mode-toggle">
+                    <button type="button" id="textMode" class="active">📝 Text</button>
+                    <button type="button" id="voiceMode">🎤 Voice</button>
+                </div>
+            </div>
+
+            <div id="voiceStatus" class="voice-status"></div>
+
+            <div class="form-group">
+                <label for="symptomsInput" id="symptomsLabel">Describe your symptoms</label>
+                <textarea id="symptomsInput" name="symptoms" placeholder="Enter your symptoms here..."></textarea>
+            </div>
+
+            <div class="button-group form-actions">
+                <button type="button" id="recordBtn" class="btn-secondary" style="display:none;">🎤 Start Recording</button>
+                <button type="button" id="stopBtn" class="btn-danger" style="display:none;">⏹️ Stop Recording</button>
+                <button type="submit" id="submitBtn" class="btn-primary">🔍 Analyze Symptoms</button>
+            </div>
+                    </div>
+        </form>
+
+        <div id="results" class="results">
+            <div id="loadingIndicator" class="loading" style="display:none;">🔄 Analyzing symptoms...</div>
+            <div id="resultsContent"></div>
+
+            <div id="resultsActions" class="results-actions">
+                <div class="results-actions-left">
+                    <div class="button-group" id="ttsControls" style="display:none;">
+                        <button type="button" id="speakBtn" class="btn-success">🔊 Speak Results</button>
+                        <button type="button" id="stopSpeakBtn" class="btn-secondary">⏹️ Stop Speaking</button>
+                    </div>
+                    <button id="downloadBtn" type="button" class="btn-success">📄 Download Report</button>
+                </div>
+                <button id="chatToggleBtn" class="chat-toggle-btn" type="button" title="Open chatbot" aria-label="Open chatbot">💬</button>
+            </div>
+
+            <div id="chatbotBox" class="chatbot-box">
+                <div class="chatbot-header">
+                    <div>
+                        <div class="chatbot-title" id="chatbotTitle">💬 Ask about your result</div>
+                        <div class="chatbot-subtitle" id="chatbotSubtitle">Ask follow-up questions about medicine, recovery time, precautions, doctor visits, and symptom meaning.</div>
+                    </div>
+                </div>
+                <div class="quick-questions" id="quickQuestions"></div>
+                <div id="chatHistory" class="chat-history">
+                    <div class="chat-empty" id="chatEmptyState">Choose a question above or type your doubt below to get a clearer explanation of your result.</div>
+                </div>
+
+                <div class="chat-input-row">
+                    <input type="text" id="chatInput" placeholder="Ask your doubt about the result..." />
+                    <button type="button" id="sendChatBtn" class="btn-chat">Send</button>
+                </div>
+
+                <div id="chatDisclaimer" class="chat-disclaimer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Login protection
+window.addEventListener('load', () => {
+    const email = localStorage.getItem('email');
+    if (!email) {
+        alert('Please login first 🔐');
+        window.location.href = 'login.html';
+    }
+});
+
+function goToHistory() {
+    window.location.href = 'history.html';
+}
+
+function logout(event) {
+    if (event) event.preventDefault();
+    localStorage.removeItem('email');
+    localStorage.removeItem('userName');
+    window.location.href = 'login.html';
+}
+
+let currentMode = 'text';
+let isRecording = false;
+let recognition = null;
+let currentResults = null;
+let currentAudio = null;
+let currentChatAudio = null;
+let detectedApiPort = 8000;
+let speakRequestInFlight = false;
+let chatRequestInFlight = false;
+
+const API_PORTS = [8000,8001,8002,8003,8004,8005,8006,8007,8008,8009,8010];
+
+const UI_TEXT = {
+    en: {
+        title: " Symptoms Checker",
+        subtitle: "AI-powered symptom analysis and disease prediction",
+        languageLabel: "Language / भाषा / భాష / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ",
+        inputMode: "Input Mode",
+        textMode: "📝 Text",
+        voiceMode: "🎤 Voice",
+        describeSymptoms: "Describe your symptoms",
+        placeholder: "Enter your symptoms here... (e.g., fever,headache)",
+        analyzeBtn: "🔍 Analyze Symptoms",
+        speakBtn: "🔊 Speak Results",
+        stopSpeakBtn: "⏹️ Stop Speaking",
+        startRecording: "🎤 Start Recording",
+        stopRecording: "⏹️ Stop Recording",
+        analyzing: "🔄 Analyzing symptoms...",
+        symptomsDetected: "🔍 Symptoms Detected:",
+        diseasePredictions: "📊 Disease Predictions:",
+        precautions: "Precautions:",
+        summary: "📝 Summary:",
+        online: "🌐 Connected to API on port",
+        offline: "📱 API Offline",
+        chatTitle: "💬 Ask about your result",
+        chatPlaceholder: "Ask your doubt about the result...",
+        sendBtn: "Send",
+        generatingAudio: "⏳ Generating audio...",
+        downloadReport: "📄 Download Report",
+        chatHelp: "Ask follow-up questions about medicine, recovery time, precautions, doctor visits, and symptom meaning.",
+        chatEmpty: "Choose a question above or type your doubt below to get a clearer explanation of your result.",
+        noSymptoms: "No symptoms detected.",
+        quickQuestions: [
+            "Which medicine is commonly used?",
+            "Why these precautions?",
+            "How much recovery time may it take?",
+            "When should I consult a doctor?",
+            "Explain the detected symptoms."
+        ]
+    },
+    hi: {
+        title: " लक्षण जाँचक",
+        subtitle: "एआई आधारित लक्षण विश्लेषण और रोग पूर्वानुमान",
+        languageLabel: "Language / भाषा / భాష / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ",
+        inputMode: "इनपुट मोड",
+        textMode: "📝 टेक्स्ट",
+        voiceMode: "🎤 वॉइस",
+        describeSymptoms: "अपने लक्षण लिखें",
+        placeholder: "अपने लक्षण यहाँ लिखें...",
+        analyzeBtn: "🔍 लक्षण विश्लेषण करें",
+        speakBtn: "🔊 परिणाम सुनें",
+        stopSpeakBtn: "⏹️ बोलना बंद करें",
+        startRecording: "🎤 रिकॉर्डिंग शुरू करें",
+        stopRecording: "⏹️ रिकॉर्डिंग रोकें",
+        analyzing: "🔄 लक्षणों का विश्लेषण हो रहा है...",
+        symptomsDetected: "🔍 पाए गए लक्षण:",
+        diseasePredictions: "📊 रोग पूर्वानुमान:",
+        precautions: "सावधानियाँ:",
+        summary: "📝 सारांश:",
+        online: "🌐 API से जुड़ा है, पोर्ट",
+        offline: "📱 API ऑफलाइन",
+        chatTitle: "💬 अपने परिणाम के बारे में पूछें",
+        chatPlaceholder: "अपने परिणाम के बारे में सवाल पूछें...",
+        sendBtn: "भेजें",
+        generatingAudio: "⏳ ऑडियो तैयार हो रहा है...",
+        downloadReport: "📄 रिपोर्ट डाउनलोड करें",
+        chatHelp: "दवा, ठीक होने का समय, सावधानियाँ, डॉक्टर से कब मिलना है और लक्षणों का मतलब पूछ सकते हैं।",
+        chatEmpty: "ऊपर से कोई सवाल चुनें या नीचे अपना सवाल लिखें।",
+        noSymptoms: "कोई लक्षण नहीं मिले।",
+        quickQuestions: [
+            "कौन सी दवा आमतौर पर उपयोग की जाती है?",
+            "ये सावधानियाँ क्यों?",
+            "ठीक होने में कितना समय लग सकता है?",
+            "मुझे डॉक्टर से कब मिलना चाहिए?",
+            "पहचाने गए लक्षण समझाइए।"
+        ]
+    },
+    te: {
+        title: " లక్షణాల పరిశీలకుడు",
+        subtitle: "AI ఆధారిత లక్షణ విశ్లేషణ మరియు వ్యాధి అంచనా",
+        languageLabel: "Language / भाषा / భాష / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ",
+        inputMode: "ఇన్‌పుట్ మోడ్",
+        textMode: "📝 టెక్స్ట్",
+        voiceMode: "🎤 వాయిస్",
+        describeSymptoms: "మీ లక్షణాలను వివరించండి",
+        placeholder: "మీ లక్షణాలను ఇక్కడ నమోదు చేయండి...",
+        analyzeBtn: "🔍 లక్షణాలను విశ్లేషించండి",
+        speakBtn: "🔊 ఫలితాలను వినండి",
+        stopSpeakBtn: "⏹️ మాట్లాడటం ఆపండి",
+        startRecording: "🎤 రికార్డింగ్ ప్రారంభించండి",
+        stopRecording: "⏹️ రికార్డింగ్ ఆపండి",
+        analyzing: "🔄 లక్షణాలను విశ్లేషిస్తోంది...",
+        symptomsDetected: "🔍 గుర్తించిన లక్షణాలు:",
+        diseasePredictions: "📊 వ్యాధి అంచనాలు:",
+        precautions: "జాగ్రత్తలు:",
+        summary: "📝 సారాంశం:",
+        online: "🌐 API కి కనెక్ట్ అయింది, పోర్ట్",
+        offline: "📱 API ఆఫ్‌లైన్",
+        chatTitle: "💬 మీ ఫలితంపై అడగండి",
+        chatPlaceholder: "మీ సందేహాన్ని ఇక్కడ అడగండి...",
+        sendBtn: "పంపండి",
+        generatingAudio: "⏳ ఆడియో తయారవుతోంది...",
+        downloadReport: "📄 రిపోర్ట్ డౌన్‌లోడ్ చేయండి",
+        chatHelp: "మందులు, కోలుకునే సమయం, జాగ్రత్తలు, డాక్టర్‌ను ఎప్పుడు కలవాలి, లక్షణాల అర్థం గురించి అడగండి.",
+        chatEmpty: "పైన ఉన్న ప్రశ్నను ఎంచుకోండి లేదా మీ సందేహాన్ని క్రింద టైప్ చేయండి.",
+        noSymptoms: "ఎలాంటి లక్షణాలు గుర్తించబడలేదు.",
+        quickQuestions: [
+            "సాధారణంగా ఏ మందు ఉపయోగిస్తారు?",
+            "ఈ జాగ్రత్తలు ఎందుకు?",
+            "కోలుకోవడానికి ఎంత సమయం పడుతుంది?",
+            "నేను డాక్టర్‌ను ఎప్పుడు కలవాలి?",
+            "గుర్తించిన లక్షణాలను వివరించండి."
+        ]
+    },
+    kn: {
+        title: " ಲಕ್ಷಣ ಪರಿಶೀಲಕ",
+        subtitle: "ಎಐ ಆಧಾರಿತ ಲಕ್ಷಣ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ರೋಗ ಮುನ್ಸೂಚನೆ",
+        languageLabel: "Language / भाषा / భాష / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ",
+        inputMode: "ಇನ್‌ಪುಟ್ ಮೋಡ್",
+        textMode: "📝 ಪಠ್ಯ",
+        voiceMode: "🎤 ಧ್ವನಿ",
+        describeSymptoms: "ನಿಮ್ಮ ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ",
+        placeholder: "ನಿಮ್ಮ ಲಕ್ಷಣಗಳನ್ನು ಇಲ್ಲಿ ಬರೆಯಿರಿ...", 
+        analyzeBtn: "🔍 ಲಕ್ಷಣಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಿ",
+        speakBtn: "🔊 ಫಲಿತಾಂಶಗಳನ್ನು ಕೇಳಿ",
+        stopSpeakBtn: "⏹️ ಮಾತನಾಡುವುದನ್ನು ನಿಲ್ಲಿಸಿ",
+        startRecording: "🎤 ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ",
+        stopRecording: "⏹️ ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ",
+        analyzing: "🔄 ಲಕ್ಷಣಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...",
+        symptomsDetected: "🔍 ಪತ್ತೆಯಾದ ಲಕ್ಷಣಗಳು:",
+        diseasePredictions: "📊 ರೋಗ ಮುನ್ಸೂಚನೆಗಳು:",
+        precautions: "ಮುನ್ನೆಚ್ಚರಿಕೆಗಳು:",
+        summary: "📝 ಸಾರಾಂಶ:",
+        online: "🌐 API ಗೆ ಸಂಪರ್ಕಿಸಲಾಗಿದೆ, ಪೋರ್ಟ್",
+        offline: "📱 API ಆಫ್‌ಲೈನ್",
+        chatTitle: "💬 ನಿಮ್ಮ ಫಲಿತಾಂಶದ ಬಗ್ಗೆ ಕೇಳಿ",
+        chatPlaceholder: "ನಿಮ್ಮ ಸಂದೇಹವನ್ನು ಇಲ್ಲಿ ಕೇಳಿ...",
+        sendBtn: "ಕಳುಹಿಸಿ",
+        generatingAudio: "⏳ ಆಡಿಯೊ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...",
+        downloadReport: "📄 ವರದಿ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+        chatHelp: "ಔಷಧಿ, ಚೇತರಿಕೆ ಸಮಯ, ಮುನ್ನೆಚ್ಚರಿಕೆಗಳು, ವೈದ್ಯರನ್ನು ಯಾವಾಗ ಭೇಟಿ ಮಾಡಬೇಕು ಮತ್ತು ಲಕ್ಷಣಗಳ ಅರ್ಥ ಬಗ್ಗೆ ಕೇಳಿ.",
+        chatEmpty: "ಮೇಲಿನ ಪ್ರಶ್ನೆ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ನಿಮ್ಮ ಸಂದೇಹವನ್ನು ಕೆಳಗೆ ಟೈಪ್ ಮಾಡಿ.",
+        noSymptoms: "ಯಾವ ಲಕ್ಷಣಗಳೂ ಕಂಡುಬಂದಿಲ್ಲ.",
+        quickQuestions: [
+            "ಸಾಮಾನ್ಯವಾಗಿ ಯಾವ ಔಷಧ ಬಳಸುತ್ತಾರೆ?",
+            "ಈ ಮುನ್ನೆಚ್ಚರಿಕೆಗಳು ಏಕೆ?",
+            "ಚೇತರಿಸಿಕೊಳ್ಳಲು ಎಷ್ಟು ಸಮಯ ಬೇಕಾಗಬಹುದು?",
+            "ನಾನು ವೈದ್ಯರನ್ನು ಯಾವಾಗ ಭೇಟಿ ಮಾಡಬೇಕು?",
+            "ಪತ್ತೆಯಾದ ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ."
+        ]
+    },
+    ta: {
+        title: " அறிகுறி சரிபார்ப்பான்",
+        subtitle: "ஏஐ அடிப்படையிலான அறிகுறி பகுப்பாய்வு மற்றும் நோய் கணிப்பு",
+        languageLabel: "Language / भाषा / భाषा / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ",
+        inputMode: "உள்ளீட்டு முறை",
+        textMode: "📝 உரை",
+        voiceMode: "🎤 குரல்",
+        describeSymptoms: "உங்கள் அறிகுறிகளை விவரிக்கவும்",
+        placeholder: "உங்கள் அறிகுறிகளை இங்கே எழுதுங்கள்...",
+        analyzeBtn: "🔍 அறிகுறிகளை பகுப்பாய்வு செய்யவும்",
+        speakBtn: "🔊 முடிவுகளை கேளுங்கள்",
+        stopSpeakBtn: "⏹️ பேசுவதை நிறுத்தவும்",
+        startRecording: "🎤 பதிவு தொடங்கவும்",
+        stopRecording: "⏹️ பதிவை நிறுத்தவும்",
+        analyzing: "🔄 அறிகுறிகள் பகுப்பாய்வு செய்யப்படுகிறது...",
+        symptomsDetected: "🔍 கண்டறியப்பட்ட அறிகுறிகள்:",
+        diseasePredictions: "📊 நோய் கணிப்புகள்:",
+        precautions: "முன்னெச்சரிக்கைகள்:",
+        summary: "📝 சுருக்கம்:",
+        online: "🌐 API இணைக்கப்பட்டது, போர்ட்",
+        offline: "📱 API ஆஃப்லைன்",
+        chatTitle: "💬 உங்கள் முடிவைப் பற்றி கேளுங்கள்",
+        chatPlaceholder: "உங்கள் சந்தேகத்தை இங்கே கேளுங்கள்...",
+        sendBtn: "அனுப்பு",
+        downloadReport: "📄 அறிக்கையை பதிவிறக்கவும்",
+        chatHelp: "மருந்து, குணமடையும் நேரம், முன்னெச்சரிக்கைகள், மருத்துவரை எப்போது பார்க்க வேண்டும், அறிகுறிகளின் அர்த்தம் பற்றி கேளுங்கள்.",
+        chatEmpty: "மேலுள்ள கேள்வியைத் தேர்ந்தெடுக்கவும் அல்லது கீழே உங்கள் சந்தேகத்தைத் টাইப் செய்யவும்.",
+        noSymptoms: "எந்த அறிகுறிகளும் கண்டறியப்படவில்லை.",
+        quickQuestions: [
+            "பொதுவாக எந்த மருந்து பயன்படுத்தப்படுகிறது?",
+            "இந்த முன்னெச்சரிக்கைகள் ஏன்?",
+            "குணமடைய எவ்வளவு நேரம் ஆகலாம்?",
+            "நான் எப்போது மருத்துவரை பார்க்க வேண்டும்?",
+            "கண்டறியப்பட்ட அறிகுறிகளை விளக்குங்கள்."
+        ]
+    },
+    pa: {
+        title: " ਲੱਛਣ ਜਾਂਚਕ",
+        subtitle: "ਏਆਈ ਆਧਾਰਿਤ ਲੱਛਣ ਵਿਸ਼ਲੇਸ਼ਣ ਅਤੇ ਰੋਗ ਅਨੁਮਾਨ",
+        languageLabel: "Language / भाषा / భाषा / ಭಾಷೆ / மொழி / ਭਾਸ਼ਾ",
+        inputMode: "ਇਨਪੁਟ ਮੋਡ",
+        textMode: "📝 ਟੈਕਸਟ",
+        voiceMode: "🎤 ਆਵਾਜ਼",
+        describeSymptoms: "ਆਪਣੇ ਲੱਛਣ ਲਿਖੋ",
+        placeholder: "ਇੱਥੇ ਆਪਣੇ ਲੱਛਣ ਲਿਖੋ...",
+        analyzeBtn: "🔍 ਲੱਛਣ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰੋ",
+        speakBtn: "🔊 ਨਤੀਜੇ ਸੁਣੋ",
+        stopSpeakBtn: "⏹️ ਬੋਲਣਾ ਬੰਦ ਕਰੋ",
+        startRecording: "🎤 ਰਿਕਾਰਡਿੰਗ ਸ਼ੁਰੂ ਕਰੋ",
+        stopRecording: "⏹️ ਰਿਕਾਰਡਿੰਗ ਰੋਕੋ",
+        analyzing: "🔄 ਲੱਛਣਾਂ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਹੋ ਰਿਹਾ ਹੈ...",
+        symptomsDetected: "🔍 ਮਿਲੇ ਲੱਛਣ:",
+        diseasePredictions: "📊 ਰੋਗ ਅਨੁਮਾਨ:",
+        precautions: "ਸਾਵਧਾਨੀਆਂ:",
+        summary: "📝 ਸਾਰ:",
+        online: "🌐 API ਨਾਲ ਜੁੜਿਆ, ਪੋਰਟ",
+        offline: "📱 API ਆਫਲਾਈਨ",
+        chatTitle: "💬 ਆਪਣੇ ਨਤੀਜੇ ਬਾਰੇ ਪੁੱਛੋ",
+        chatPlaceholder: "ਆਪਣਾ ਸਵਾਲ ਇੱਥੇ ਪੁੱਛੋ...",
+        sendBtn: "ਭੇਜੋ",
+        generatingAudio: "⏳ ਆਡੀਓ ਤਿਆਰ ਹੋ ਰਹੀ ਹੈ...",
+        downloadReport: "📄 ਰਿਪੋਰਟ ਡਾਊਨਲੋਡ ਕਰੋ",
+        chatHelp: "ਦਵਾਈ, ਠੀਕ ਹੋਣ ਦਾ ਸਮਾਂ, ਸਾਵਧਾਨੀਆਂ, ਡਾਕਟਰ ਕੋਲ ਕਦੋਂ ਜਾਣਾ ਹੈ ਅਤੇ ਲੱਛਣਾਂ ਦਾ ਅਰਥ ਪੁੱਛੋ।",
+        chatEmpty: "ਉੱਪਰੋਂ ਸਵਾਲ ਚੁਣੋ ਜਾਂ ਹੇਠਾਂ ਆਪਣਾ ਸਵਾਲ ਲਿਖੋ।",
+        noSymptoms: "ਕੋਈ ਲੱਛਣ ਨਹੀਂ ਮਿਲੇ।",
+        quickQuestions: [
+            "ਆਮ ਤੌਰ 'ਤੇ ਕਿਹੜੀ ਦਵਾਈ ਵਰਤੀ ਜਾਂਦੀ ਹੈ?",
+            "ਇਹ ਸਾਵਧਾਨੀਆਂ ਕਿਉਂ?",
+            "ਠੀਕ ਹੋਣ ਵਿੱਚ ਕਿੰਨਾ ਸਮਾਂ ਲੱਗ ਸਕਦਾ ਹੈ?",
+            "ਮੈਨੂੰ ਡਾਕਟਰ ਨੂੰ ਕਦੋਂ ਮਿਲਣਾ ਚਾਹੀਦਾ ਹੈ?",
+            "ਪਤਾ ਲੱਗੇ ਲੱਛਣ ਸਮਝਾਓ।"
+        ]
+    }
+};
+
+function getText() {
+    const lang = document.getElementById('language').value || 'en';
+    return UI_TEXT[lang] || UI_TEXT.en;
+}
+
+function getApiBase() {
+    return `http://localhost:${detectedApiPort}`;
+}
+
+function updateLanguageUI() {
+    const t = getText();
+    document.getElementById('mainTitle').textContent = t.title;
+    document.getElementById('mainSubtitle').textContent = t.subtitle;
+    document.getElementById('languageLabel').textContent = t.languageLabel;
+    document.getElementById('inputModeLabel').textContent = t.inputMode;
+    document.getElementById('textMode').textContent = t.textMode;
+    document.getElementById('voiceMode').textContent = t.voiceMode;
+    document.getElementById('symptomsLabel').textContent = t.describeSymptoms;
+    document.getElementById('symptomsInput').placeholder = t.placeholder;
+    document.getElementById('submitBtn').textContent = t.analyzeBtn;
+    document.getElementById('speakBtn').textContent = t.speakBtn;
+    document.getElementById('stopSpeakBtn').textContent = t.stopSpeakBtn;
+    document.getElementById('recordBtn').textContent = t.startRecording;
+    document.getElementById('stopBtn').textContent = t.stopRecording;
+    document.getElementById('loadingIndicator').textContent = t.analyzing;
+    document.getElementById('chatbotTitle').textContent = t.chatTitle;
+    document.getElementById('chatbotSubtitle').textContent = t.chatHelp;
+    document.getElementById('chatEmptyState').textContent = t.chatEmpty;
+    document.getElementById('chatInput').placeholder = t.chatPlaceholder;
+    document.getElementById('sendChatBtn').textContent = t.sendBtn;
+    document.getElementById('downloadBtn').textContent = t.downloadReport;
+    renderQuickQuestions();
+    updateStatusText();
+}
+
+function renderQuickQuestions() {
+    const t = getText();
+    const box = document.getElementById('quickQuestions');
+    box.innerHTML = '';
+    t.quickQuestions.forEach(q => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = q;
+        btn.addEventListener('click', async () => {
+            await askChatbot(q);
+        });
+        box.appendChild(btn);
+    });
+}
+
+function updateStatusText(isOnline = true) {
+    const t = getText();
+    const status = document.getElementById('statusIndicator');
+    if (isOnline) {
+        status.textContent = `${t.online} ${detectedApiPort}`;
+        status.className = 'status-indicator status-online';
+    } else {
+        status.textContent = t.offline;
+        status.className = 'status-indicator status-offline';
+    }
+}
+
+async function detectApiPort() {
+    for (const port of API_PORTS) {
+        try {
+            const res = await fetch(`http://localhost:${port}/health`);
+            if (res.ok) {
+                detectedApiPort = port;
+                updateStatusText(true);
+                return;
+            }
+        } catch (e) {}
+    }
+    updateStatusText(false);
+}
+
+function setMode(mode) {
+    currentMode = mode;
+    const textBtn = document.getElementById('textMode');
+    const voiceBtn = document.getElementById('voiceMode');
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const voiceStatus = document.getElementById('voiceStatus');
+
+    textBtn.classList.toggle('active', mode === 'text');
+    voiceBtn.classList.toggle('active', mode === 'voice');
+
+    if (mode === 'voice') {
+        recordBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'inline-block';
+        voiceStatus.style.display = 'block';
+        voiceStatus.className = 'voice-status voice-idle';
+        voiceStatus.textContent = 'Voice mode selected';
+    } else {
+        recordBtn.style.display = 'none';
+        stopBtn.style.display = 'none';
+        voiceStatus.style.display = 'none';
+    }
+}
+
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+        isRecording = true;
+        const voiceStatus = document.getElementById('voiceStatus');
+        voiceStatus.style.display = 'block';
+        voiceStatus.className = 'voice-status voice-listening';
+        voiceStatus.textContent = 'Listening...';
+    };
+
+    recognition.onresult = (event) => {
+        document.getElementById('symptomsInput').value = event.results[0][0].transcript;
+    };
+
+    recognition.onerror = (event) => {
+        const voiceStatus = document.getElementById('voiceStatus');
+        voiceStatus.style.display = 'block';
+        voiceStatus.className = 'voice-status voice-error';
+        voiceStatus.textContent = `Voice error: ${event.error}`;
+    };
+
+    recognition.onend = () => {
+        isRecording = false;
+        const voiceStatus = document.getElementById('voiceStatus');
+        voiceStatus.className = 'voice-status voice-idle';
+        voiceStatus.textContent = 'Recording stopped';
+    };
+}
+
+function base64ToBlob(base64, mimeType = 'audio/mpeg') {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+}
+
+function stopAllAudio() {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+    }
+    if (currentChatAudio) {
+        currentChatAudio.pause();
+        currentChatAudio.currentTime = 0;
+        currentChatAudio = null;
+    }
+}
+
+function playAudio(base64Audio, isChat = false) {
+    if (!base64Audio) return;
+    stopAllAudio();
+    const blob = base64ToBlob(base64Audio);
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    if (isChat) currentChatAudio = audio;
+    else currentAudio = audio;
+    audio.play().catch(() => {});
+}
+
+function getSeverityClass(severity) {
+    const sev = String(severity || '').toLowerCase();
+    if (
+        sev.includes('high') ||
+        String(severity).includes('उच्च') ||
+        String(severity).includes('అధిక') ||
+        String(severity).includes('ಹೆಚ್ಚ') ||
+        String(severity).includes('அதிக') ||
+        String(severity).includes('ਉੱਚ')
+    ) return 'severity-high';
+
+    if (
+        sev.includes('medium') ||
+        String(severity).includes('मध्यम') ||
+        String(severity).includes('మధ్య') ||
+        String(severity).includes('ಮಧ್ಯ') ||
+        String(severity).includes('மித') ||
+        String(severity).includes('ਦਰਮਿਆ')
+    ) return 'severity-medium';
+
+    return 'severity-low';
+}
+
+function renderResults(data) {
+    const t = getText();
+    const results = document.getElementById('results');
+    const resultsContent = document.getElementById('resultsContent');
+    const chatbotBox = document.getElementById('chatbotBox');
+    const resultsActions = document.getElementById('resultsActions');
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+
+    const predictionsToShow =
+        (data.predictions_translated && data.predictions_translated.length > 0)
+            ? data.predictions_translated
+            : (data.predictions || []);
+
+    let html = `
+        <div class="result-item">
+            <h3>${t.symptomsDetected}</h3>
+            <p>${(data.symptoms || []).length ? data.symptoms.join(', ') : t.noSymptoms}</p>
+        </div>
+    `;
+
+    if (!predictionsToShow.length) {
+        html += `
+            <div class="result-item">
+                <div class="error">${data.display_text || 'No prediction available.'}</div>
+            </div>
+        `;
+        chatbotBox.classList.remove('show');
+        chatToggleBtn.classList.remove('show', 'active');
+        resultsActions.classList.remove('show');
+    } else {
+        html += `<div class="result-item"><h3>${t.diseasePredictions}</h3></div>`;
+
+        predictionsToShow.forEach((pred, index) => {
+            const precautions = Array.isArray(pred.precautions) ? pred.precautions : [];
+            html += `
+                <div class="result-item">
+                    <h3>${index + 1}. ${pred.disease}</h3>
+                    <div>
+                        <span class="probability">${pred.prob}%</span>
+                        <span class="severity ${getSeverityClass(pred.severity)}">${pred.severity}</span>
+                    </div>
+                    <div class="precautions">
+                        <strong>${t.precautions}</strong>
+                        <ul>${precautions.map(p => `<li>${p}</li>`).join('')}</ul>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+            <div class="result-item">
+                <h3>${t.summary}</h3>
+                <p>${data.display_text || ''}</p>
+            </div>
+        `;
+
+        resultsActions.classList.add('show');
+        chatToggleBtn.classList.add('show');
+        chatToggleBtn.classList.remove('active');
+        chatToggleBtn.title = 'Open chatbot';
+        chatbotBox.classList.remove('show');
+    }
+
+    resultsContent.innerHTML = html;
+    results.classList.add('show');
+    document.getElementById('ttsControls').style.display = data.display_text ? 'flex' : 'none';
+    document.getElementById('downloadBtn').style.display = (data.predictions && data.predictions.length) ? 'inline-block' : 'none';
+}
+
+function addChatMessage(text, type) {
+    const chatHistory = document.getElementById('chatHistory');
+    const emptyState = document.getElementById('chatEmptyState');
+    if (emptyState) emptyState.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = `chat-message ${type === 'user' ? 'chat-user' : (type === 'typing' ? 'chat-typing' : 'chat-bot')}`;
+    div.textContent = text;
+    chatHistory.appendChild(div);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+    return div;
+}
+
+function removeTypingMessage(node) {
+    if (node && node.parentNode) node.parentNode.removeChild(node);
+}
+
+async function askChatbot(question) {
+    if (!currentResults) return;
+
+    const englishPredictions = currentResults.predictions || [];
+    if (!englishPredictions.length) {
+        addChatMessage('No prediction available for chatbot.', 'bot');
+        return;
+    }
+
+    const topEnglish = englishPredictions[0];
+    const lang = document.getElementById('language').value;
+
+    addChatMessage(question, 'user');
+    const typingBubble = addChatMessage('Preparing a clearer explanation for you...', 'typing');
+
+    try {
+        chatRequestInFlight = true;
+        const sendBtn = document.getElementById('sendChatBtn');
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.75';
+        const res = await fetch(`${getApiBase()}/chat`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                question: question,
+                language: lang,
+                predicted_disease: topEnglish.disease,
+                severity: topEnglish.severity,
+                symptoms: topEnglish.matched_symptoms && topEnglish.matched_symptoms.length
+                    ? topEnglish.matched_symptoms
+                    : (currentResults.symptoms || []),
+                precautions: topEnglish.precautions || [],
+                symptom_descriptions: topEnglish.symptom_descriptions || {},
+                emergency: !!topEnglish.emergency
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Chatbot request failed');
+
+        removeTypingMessage(typingBubble);
+        addChatMessage(data.answer_localized || data.answer, 'bot');
+
+        const disclaimerBox = document.getElementById('chatDisclaimer');
+        disclaimerBox.style.display = 'block';
+        disclaimerBox.textContent = data.disclaimer || '';
+
+        if (data.tts_audio_base64) {
+            playAudio(data.tts_audio_base64, true);
+        }
+    } catch (err) {
+        removeTypingMessage(typingBubble);
+        addChatMessage(`Error: ${err.message}`, 'bot');
+    } finally {
+        chatRequestInFlight = false;
+        const sendBtn = document.getElementById('sendChatBtn');
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '';
+    }
+}
+
+async function handlePrediction(event) {
+    event.preventDefault();
+
+    const input = document.getElementById('symptomsInput').value.trim();
+    const language = document.getElementById('language').value;
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const results = document.getElementById('results');
+    const resultsContent = document.getElementById('resultsContent');
+    const chatbotBox = document.getElementById('chatbotBox');
+    const chatHistory = document.getElementById('chatHistory');
+    const chatDisclaimer = document.getElementById('chatDisclaimer');
+    const resultsActions = document.getElementById('resultsActions');
+
+    if (!input) {
+        alert('Please enter symptoms first.');
+        return;
+    }
+
+    loadingIndicator.style.display = 'block';
+    results.classList.add('show');
+    resultsContent.innerHTML = '';
+    chatbotBox.classList.remove('show');
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+    chatToggleBtn.classList.remove('show', 'active');
+    document.getElementById('downloadBtn').style.display = 'none';
+    resultsActions.classList.remove('show');
+    chatHistory.innerHTML = `<div class="chat-empty" id="chatEmptyState">${getText().chatEmpty}</div>`;
+    chatDisclaimer.style.display = 'none';
+    currentResults = null;
+    stopAllAudio();
+
+    try {
+        const payload = {
+            input: input,
+            input_type: 'text',
+            language: language,
+            mode: currentMode,
+            email: localStorage.getItem('email') || 'guest'
+        };
+
+        const res = await fetch(`${getApiBase()}/predict`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Prediction failed');
+
+        currentResults = data;
+        renderResults(data);
+    } catch (err) {
+        resultsContent.innerHTML = `<div class="error">${err.message}</div>`;
+    } finally {
+        loadingIndicator.style.display = 'none';
+    }
+}
+
+
+function toggleChatbot() {
+    const box = document.getElementById('chatbotBox');
+    const btn = document.getElementById('chatToggleBtn');
+    if (!currentResults || !(currentResults.predictions || []).length) return;
+    const willOpen = !box.classList.contains('show');
+    box.classList.toggle('show');
+    btn.classList.toggle('active', willOpen);
+    btn.title = willOpen ? 'Close chatbot' : 'Open chatbot';
+    btn.setAttribute('aria-label', btn.title);
+    if (willOpen) {
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => document.getElementById('chatInput').focus(), 150);
+    }
+}
+
+function downloadPDF() {
+    if (!currentResults || !(currentResults.predictions || []).length) {
+        alert('No results to download');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const email = localStorage.getItem('email') || 'guest';
+    const symptoms = document.getElementById('symptomsInput').value.trim();
+    const prediction = currentResults.predictions[0];
+
+    let y = 15;
+    doc.setFontSize(16);
+    doc.text('Medical Report', 14, y);
+    y += 10;
+
+    doc.setFontSize(11);
+    doc.text(`User: ${email}`, 14, y); y += 8;
+    doc.text(`Date: ${new Date().toLocaleString()}`, 14, y); y += 8;
+    doc.text(`Symptoms: ${symptoms}`, 14, y, { maxWidth: 180 }); y += 14;
+    doc.text(`Prediction: ${prediction.disease}`, 14, y); y += 8;
+    doc.text(`Severity: ${prediction.severity}`, 14, y); y += 8;
+    doc.text('Precautions:', 14, y); y += 8;
+
+    (prediction.precautions || []).forEach((p) => {
+        doc.text(`- ${p}`, 18, y, { maxWidth: 176 });
+        y += 8;
+        if (y > 270) {
+            doc.addPage();
+            y = 15;
+        }
+    });
+
+    y += 4;
+    doc.text('Summary:', 14, y); y += 8;
+    doc.text(currentResults.display_text || '', 14, y, { maxWidth: 180 });
+    doc.save('medical_report.pdf');
+}
+
+document.getElementById('language').addEventListener('change', async () => {
+    updateLanguageUI();
+    await detectApiPort();
+});
+
+document.getElementById('textMode').addEventListener('click', () => setMode('text'));
+document.getElementById('voiceMode').addEventListener('click', () => setMode('voice'));
+
+document.getElementById('recordBtn').addEventListener('click', () => {
+    if (recognition && !isRecording) {
+        const map = {
+            en: 'en-US',
+            hi: 'hi-IN',
+            te: 'te-IN',
+            kn: 'kn-IN',
+            ta: 'ta-IN',
+            pa: 'pa-IN'
+        };
+        recognition.lang = map[document.getElementById('language').value] || 'en-US';
+        recognition.start();
+    }
+});
+
+document.getElementById('stopBtn').addEventListener('click', () => {
+    if (recognition && isRecording) recognition.stop();
+});
+
+document.getElementById('symptomsForm').addEventListener('submit', handlePrediction);
+
+document.getElementById('speakBtn').addEventListener('click', async () => {
+    if (!currentResults || !currentResults.display_text || speakRequestInFlight) return;
+
+    const btn = document.getElementById('speakBtn');
+    const originalText = btn.textContent;
+
+    try {
+        speakRequestInFlight = true;
+        stopAllAudio();
+
+        if (currentResults.tts_audio_base64) {
+            playAudio(currentResults.tts_audio_base64, false);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = getText().generatingAudio || '⏳ Generating audio...';
+
+        const res = await fetch(`${getApiBase()}/tts`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                text: currentResults.display_text || '',
+                language: currentResults.language || document.getElementById('language').value || 'en'
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to generate speech');
+
+        if (data.tts_audio_base64) {
+            currentResults.tts_audio_base64 = data.tts_audio_base64;
+            playAudio(data.tts_audio_base64, false);
+        }
+    } catch (err) {
+        alert(err.message || 'Failed to generate speech audio');
+    } finally {
+        speakRequestInFlight = false;
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
+document.getElementById('stopSpeakBtn').addEventListener('click', stopAllAudio);
+document.getElementById('downloadBtn').addEventListener('click', downloadPDF);
+document.getElementById('chatToggleBtn').addEventListener('click', toggleChatbot);
+
+document.getElementById('sendChatBtn').addEventListener('click', async () => {
+    if (chatRequestInFlight) return;
+    const input = document.getElementById('chatInput');
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = '';
+    await askChatbot(question);
+});
+
+document.getElementById('chatInput').addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = document.getElementById('chatInput');
+        if (chatRequestInFlight) return;
+        const question = input.value.trim();
+        if (!question) return;
+        input.value = '';
+        await askChatbot(question);
+    }
+});
+
+window.addEventListener('load', async () => {
+    updateLanguageUI();
+    await detectApiPort();
+    initSpeechRecognition();
+});
+</script>
+</body>
+</html>-->
+
+
+
+
+
+
+
+<!-- //SEE THIS VERSION IS FOR LAB TESTS OR MEDICAL TESTS RECOMMENDATION -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1553,4 +3116,6 @@ window.addEventListener('load', async () => {
 </script>
 </body>
 </html>
+
+
 

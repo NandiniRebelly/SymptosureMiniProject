@@ -1,0 +1,144 @@
+[
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "itching",
+      "runny_nose",
+      "skin_rash"
+    ],
+    "prediction": "fungal infection",
+    "severity": "Low",
+    "display_text": "You may have fungal infection. Severity: Low. Home care and rest may help.",
+    "date": "2026-04-06T23:31:54.751206"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "itching",
+      "runny_nose",
+      "skin_rash"
+    ],
+    "prediction": "fungal infection",
+    "severity": "Low",
+    "display_text": "You may have fungal infection. Severity: Low. Home care and rest may help.",
+    "date": "2026-04-06T23:32:05.382758"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "cough",
+      "high_fever",
+      "runny_nose"
+    ],
+    "prediction": "common cold",
+    "severity": "High",
+    "display_text": "You may have common cold. Severity: High. Consult a doctor.",
+    "date": "2026-04-06T23:38:54.382912"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "cough",
+      "high_fever",
+      "runny_nose"
+    ],
+    "prediction": "common cold",
+    "severity": "High",
+    "display_text": "You may have common cold. Severity: High. Consult a doctor.",
+    "date": "2026-04-06T23:39:08.359840"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "cough",
+      "high_fever",
+      "runny_nose"
+    ],
+    "prediction": "common cold",
+    "severity": "High",
+    "display_text": "You may have common cold. Severity: High. Consult a doctor.",
+    "date": "2026-04-06T23:40:47.688207"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "back_pain",
+      "neck_pain"
+    ],
+    "prediction": "cervical spondylosis",
+    "severity": "Medium",
+    "display_text": "You may have cervical spondylosis. Severity: Medium. Monitor symptoms and consult a doctor if they worsen.",
+    "date": "2026-04-06T23:45:32.214730"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "cough",
+      "high_fever",
+      "runny_nose"
+    ],
+    "prediction": "common cold",
+    "severity": "High",
+    "display_text": "You may have common cold. Severity: High. Consult a doctor.",
+    "date": "2026-04-06T23:49:52.529024"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "back_pain",
+      "neck_pain"
+    ],
+    "prediction": "cervical spondylosis",
+    "severity": "Medium",
+    "display_text": "You may have cervical spondylosis. Severity: Medium. Monitor symptoms and consult a doctor if they worsen.",
+    "date": "2026-04-06T23:53:28.764521"
+  },
+  {
+    "email": "sugan@gmail.com",
+    "symptoms": [
+      "cough",
+      "high_fever",
+      "runny_nose"
+    ],
+    "prediction": "common cold",
+    "severity": "High",
+    "display_text": "మీకు సాధారణ జలుబు. తీవ్రత: అధికం. వైద్యుడిని సంప్రదించండి.",
+    "date": "2026-04-06T23:54:20.548508"
+  },
+  {
+    "email": "neha@gmail.com",
+    "symptoms": [
+      "high_fever",
+      "runny_nose",
+      "vomiting"
+    ],
+    "prediction": "jaundice",
+    "severity": "High",
+    "display_text": "You may have jaundice. Severity: High. Consult a doctor.",
+    "date": "2026-04-06T23:57:30.264083"
+  },
+  {
+    "email": "neha@gmail.com",
+    "symptoms": [
+      "cough",
+      "high_fever",
+      "runny_nose"
+    ],
+    "prediction": "common cold",
+    "severity": "High",
+    "display_text": "You may have common cold. Severity: High. Consult a doctor.",
+    "date": "2026-04-07T00:02:55.053193"
+  },
+  {
+    "email": "neha@gmail.com",
+    "symptoms": [
+      "cough",
+      "runny_nose",
+      "vomiting"
+    ],
+    "prediction": "gerd",
+    "severity": "Medium",
+    "display_text": "You may have gerd. Severity: Medium. Monitor symptoms and consult a doctor if they worsen.",
+    "date": "2026-04-07T00:03:47.496396"
+  }
+]

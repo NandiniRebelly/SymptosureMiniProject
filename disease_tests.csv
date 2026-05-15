@@ -1,0 +1,43 @@
+Disease,Severity_Trigger,Recommended_Tests,Test_Type,Priority,Notes
+Drug Reaction,High,CBC; Liver function test (LFT); Kidney function test (KFT); Serum electrolytes,Blood Test,High,Use tests when reaction is severe/systemic.
+Malaria,High,Peripheral blood smear; Rapid diagnostic test (RDT); CBC,Blood Test,Critical,RDT should be confirmed with smear where possible.
+Allergy,High,Complete blood count with eosinophils; Total IgE; Skin prick test,Blood/Allergy Test,Moderate,Only for persistent or severe allergy.
+Hypothyroidism,High,TSH; Free T4; Anti-TPO antibody,Blood Test,High,Routine endocrine confirmation.
+Psoriasis,High,ESR/CRP; Skin biopsy,Inflammatory/Skin Test,Moderate,Biopsy only when diagnosis is uncertain.
+GERD,High,Upper GI endoscopy; H. pylori test; CBC,GI Test,Moderate,For persistent or alarming symptoms.
+Chronic cholestasis,High,Liver function test (LFT); Bilirubin; Alkaline phosphatase; Abdominal ultrasound,Blood + Imaging,Critical,Used when jaundice or cholestatic signs are significant.
+hepatitis A,High,Liver function test (LFT); Hepatitis A IgM antibody; Bilirubin,Blood Test,Critical,Confirmatory viral hepatitis workup.
+Osteoarthristis,High,X-ray joint; ESR; CRP,Imaging + Blood,Moderate,High severity joint limitation only.
+(vertigo) Paroymsal  Positional Vertigo,High,Dix-Hallpike test; Audiometry; MRI brain,ENT/Neuro Test,Moderate,MRI only when red flags exist.
+Hypoglycemia,High,Random blood sugar; Fasting glucose; HbA1c,Blood Test,Critical,Urgent if recurrent or severe.
+Acne,High,Hormonal profile; Blood sugar; Lipid profile,Blood Test,Low,Only for severe/refractory acne.
+Diabetes ,High,Fasting blood sugar; Postprandial blood sugar; HbA1c; Urine routine,Blood + Urine,Critical,Core diabetes confirmation panel.
+Impetigo,High,Wound swab culture; CBC,Lab Test,Moderate,For severe or recurrent infection.
+Hypertension ,High,Blood pressure monitoring; ECG; Kidney function test; Urine albumin,Cardiac + Blood,Critical,For severe/persistent hypertension.
+Peptic ulcer diseae,High,Upper GI endoscopy; H. pylori stool antigen or urea breath test; CBC,GI Test,High,CBC helps screen bleeding/anemia.
+Dimorphic hemmorhoids(piles),High,CBC; Proctoscopy,Blood + Procedure,Moderate,For bleeding or severe piles.
+Common Cold,High,CBC; Rapid flu/COVID test; Chest X-ray,Blood + Respiratory,Low,No routine tests in mild cold; only severe cases.
+Chicken pox,High,Varicella IgM/PCR; CBC,Blood Test,Moderate,Testing mainly when severe or uncertain.
+Cervical spondylosis,High,Cervical spine X-ray; MRI cervical spine,Imaging,High,Imaging when neurological symptoms or severe pain exist.
+Hyperthyroidism,High,TSH; Free T3; Free T4; Thyroid scan,Blood + Imaging,High,Core hyperthyroid confirmation.
+Urinary tract infection,High,Urine routine; Urine culture; CBC; Kidney ultrasound,Urine + Blood + Imaging,High,Culture recommended in severe/recurrent UTI.
+Varicose veins,High,Venous Doppler ultrasound,Vascular Imaging,High,Best test for severe varicose veins.
+AIDS,High,HIV 1/2 test; CD4 count; Viral load,Blood Test,Critical,Core HIV/AIDS workup.
+Paralysis (brain hemorrhage),High,CT brain; MRI brain; Coagulation profile,Imaging + Blood,Emergency,Emergency workup.
+Typhoid,High,Blood culture; Widal test; CBC,Blood Test,Critical,Culture preferred where available.
+Hepatitis B,High,HBsAg; Liver function test (LFT); HBV DNA/PCR,Blood Test,Critical,Core hepatitis B confirmation.
+Fungal infection,High,KOH mount; Fungal culture,Lab Test,Moderate,For severe/recurrent fungal disease.
+Hepatitis C,High,Anti-HCV antibody; HCV RNA/PCR; Liver function test (LFT),Blood Test,Critical,Core hepatitis C workup.
+Migraine,High,Neurological examination; MRI brain; CT brain,Neuro Imaging,Moderate,Imaging only for severe/red-flag migraine.
+Bronchial Asthma,High,Spirometry; Peak flow measurement; Pulse oximetry,Respiratory Test,High,For severe asthma assessment.
+Alcoholic hepatitis,High,Liver function test (LFT); PT/INR; Abdominal ultrasound,Blood + Imaging,Critical,Used for significant liver involvement.
+Jaundice,High,Bilirubin; Liver function test (LFT); Complete blood count; Abdominal ultrasound,Blood + Imaging,Critical,Core jaundice workup.
+Hepatitis E,High,Hepatitis E IgM; Liver function test (LFT); Bilirubin,Blood Test,Critical,Viral hepatitis confirmation.
+Dengue,High,Dengue NS1 antigen; Dengue IgM/IgG; CBC; Platelet count,Blood Test,Critical,CBC/platelets are clinically important.
+Hepatitis D,High,HDV antibody/PCR; Liver function test (LFT); HBsAg,Blood Test,Critical,Usually evaluated with HBV status.
+Heart attack,High,ECG; Troponin; Coronary angiography,Cardiac Test,Emergency,Emergency cardiac workup.
+Pneumonia,High,Chest X-ray; CBC; Pulse oximetry,Imaging + Blood,Critical,Core severe pneumonia workup.
+Arthritis,High,X-ray joint; ESR; CRP; Rheumatoid factor,Imaging + Blood,High,Add autoimmune markers if needed.
+Gastroenteritis,High,Stool routine/culture; CBC; Serum electrolytes,Lab Test,High,For severe dehydration or persistent symptoms.
+Tuberculosis,High,TB blood test/skin test; Chest X-ray; Sputum smear/culture/NAAT,Lab + Imaging,Critical,Core TB evaluation.
+
