@@ -150,16 +150,6 @@ pytest
 
 ---
 
-## 👩‍💻 Author
 
-**Radha Sarda**  
-Machine Learning | AI | Deployment  
-Open to collaborations and improvements.
-
----
-
-## 📜 License
-
-Released under the MIT License.
 
 
