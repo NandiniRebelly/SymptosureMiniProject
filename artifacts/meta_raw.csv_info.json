@@ -1,0 +1,81 @@
+{
+  "input_files": {
+    "dataset.csv": {
+      "rows": 4920,
+      "columns": [
+        "Disease",
+        "Symptom_1",
+        "Symptom_2",
+        "Symptom_3",
+        "Symptom_4",
+        "Symptom_5",
+        "Symptom_6",
+        "Symptom_7",
+        "Symptom_8",
+        "Symptom_9",
+        "Symptom_10",
+        "Symptom_11",
+        "Symptom_12",
+        "Symptom_13",
+        "Symptom_14",
+        "Symptom_15",
+        "Symptom_16",
+        "Symptom_17"
+      ],
+      "symptom_columns": [
+        "Symptom_1",
+        "Symptom_2",
+        "Symptom_3",
+        "Symptom_4",
+        "Symptom_5",
+        "Symptom_6",
+        "Symptom_7",
+        "Symptom_8",
+        "Symptom_9",
+        "Symptom_10",
+        "Symptom_11",
+        "Symptom_12",
+        "Symptom_13",
+        "Symptom_14",
+        "Symptom_15",
+        "Symptom_16",
+        "Symptom_17"
+      ]
+    },
+    "symptom_Description.csv": {
+      "rows": 41,
+      "columns": [
+        "Symptom",
+        "Description"
+      ]
+    },
+    "symptom_precaution.csv": {
+      "rows": 41,
+      "columns": [
+        "Disease",
+        "Precaution_1",
+        "Precaution_2",
+        "Precaution_3",
+        "Precaution_4"
+      ],
+      "precaution_columns": [
+        "Precaution_1",
+        "Precaution_2",
+        "Precaution_3",
+        "Precaution_4"
+      ]
+    },
+    "Symptom-severity.csv": {
+      "rows": 133,
+      "columns": [
+        "Symptom",
+        "weight"
+      ]
+    }
+  },
+  "processing_notes": [
+    "Text normalization: strip, lowercase, remove extra whitespace",
+    "Synonym expansion: split on slashes and parentheses",
+    "Empty/NaN values filtered out from mappings"
+  ]
+}

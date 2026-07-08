@@ -1,0 +1,161 @@
+<!-- <!-- <!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>History</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(to right, #e3f2fd, #ffffff);
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #1976d2;
+        }
+
+        .history-card {
+            background: white;
+            padding: 15px;
+            margin: 15px auto;
+            border-radius: 10px;
+            width: 60%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn-back {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn-back:hover {
+            background: #125ea5;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>📜 Your Medical History</h2>
+
+<div id="historyContainer"></div>
+
+<button class="btn-back" onclick="goBack()">⬅ Back</button>
+
+<script>
+
+    window.onload = function () {
+    const email = localStorage.getItem("email");
+
+    if (!email) {
+        alert("Please login first 🔐");
+        window.location.href = "login.html";
+        return;
+    }
+
+    loadHistory(); // ✅ only after login
+};
+async function loadHistory() {
+    const email = localStorage.getItem("email") || "guest";
+
+    try {
+        const res = await fetch(`http://localhost:8000/history/${email}`);
+        const data = await res.json();
+
+        const container = document.getElementById("historyContainer");
+
+        if (!data || data.length === 0) {
+            container.innerHTML = `
+                <div style="text-align:center; color:gray;">
+                    <h3>No history found 😕</h3>
+                    <p>Start analyzing symptoms to see history here</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = "";
+
+        data.reverse().forEach((item, index) => {
+            html += `
+                <div class="history-card">
+                    <h3>${index + 1}. ${item.prediction}</h3>
+                    <p><strong>Symptoms:</strong> ${item.symptoms.join(", ")}</p>
+                    <p><strong>Severity:</strong> ${item.severity}</p>
+                    <p><strong>Date:</strong> ${new Date(item.date).toLocaleString()}</p>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        alert("Error loading history");
+    }
+}
+
+function goBack() {
+    window.location.href = "index.html";
+}
+
+loadHistory();
+</script>
+
+</body>
+</html>  
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medical History</title>
+  <style>
+    :root{--bg1:#edf9f8;--bg2:#eef5ff;--ink:#16313f;--muted:#5c7281;--card:rgba(255,255,255,.86);--primary:#1f8f95;--secondary:#4669d8;}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,Segoe UI,Tahoma,sans-serif;color:var(--ink);background:linear-gradient(135deg,var(--bg1),var(--bg2));padding:26px} .wrap{max-width:980px;margin:0 auto} .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px} h1{margin:0;font-size:clamp(1.8rem,3vw,2.5rem)} .btn{border:none;border-radius:14px;padding:12px 18px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,var(--primary),var(--secondary))} .list{display:grid;gap:16px;margin-top:18px} .card{background:var(--card);border:1px solid rgba(118,152,170,.16);border-radius:22px;padding:18px 20px;box-shadow:0 16px 34px rgba(20,72,88,.08)} .meta{color:var(--muted);margin-top:8px;line-height:1.7} .empty{text-align:center;color:var(--muted);padding:44px 20px;background:var(--card);border-radius:22px;border:1px solid rgba(118,152,170,.16)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>📜 Your Medical History</h1>
+      <button class="btn" onclick="window.location.href='index.html'">⬅ Back</button>
+    </div>
+    <div id="historyContainer" class="list"></div>
+  </div>
+<script>
+window.addEventListener('load', loadHistory);
+async function loadHistory(){
+  const email=(localStorage.getItem('email')||'').trim().toLowerCase();
+  if(!email){ window.location.href='login.html'; return; }
+  const container=document.getElementById('historyContainer');
+  container.innerHTML='<div class="empty">Loading history...</div>';
+  try{
+    const res=await fetch(`http://localhost:8000/history/${encodeURIComponent(email)}`);
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail||'Failed to load history');
+    if(!Array.isArray(data)||data.length===0){
+      container.innerHTML='<div class="empty"><h3>No history found 😕</h3><p>Start analyzing symptoms to see history here.</p></div>';
+      return;
+    }
+    container.innerHTML=data.map((item,idx)=>`<div class="card"><h3>${idx+1}. ${escapeHtml(item.prediction||'No prediction')}</h3><div class="meta"><div><strong>Symptoms:</strong> ${Array.isArray(item.symptoms)?item.symptoms.map(escapeHtml).join(', '):''}</div><div><strong>Severity:</strong> ${escapeHtml(item.severity||'')}</div><div><strong>Summary:</strong> ${escapeHtml(item.display_text||'')}</div><div><strong>Date:</strong> ${formatDate(item.date)}</div></div></div>`).join('');
+  }catch(err){
+    container.innerHTML=`<div class="empty"><h3>Could not load history</h3><p>${escapeHtml(err.message||'Unknown error')}</p></div>`;
+  }
+}
+function formatDate(value){ try{return new Date(value).toLocaleString();}catch{return value||'';} }
+function escapeHtml(str){ return String(str??'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+</script>
+</body>
+</html> 
